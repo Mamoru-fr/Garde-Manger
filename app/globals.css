@@ -1,0 +1,375 @@
+/* ================
+   RESET ET VARIABLES CSS
+   ================ */
+
+:root {
+  /* Couleurs principales (thème artisan/garde-manger) */
+  --color-primary: #8B4513; /* Marron */
+  --color-primary-light: #A0522D; /* Marron clair */
+  --color-primary-dark: #654321; /* Marron foncé */
+  
+  --color-secondary: #D2B48C; /* Tan */
+  --color-secondary-light: #E6C299; /* Tan clair */
+  --color-secondary-dark: #8B7355; /* Tan foncé */
+  
+  --color-accent: #F5DEB3; /* Wheat */
+  --color-accent-light: #FFF8DC; /* Cornsilk */
+  --color-accent-dark: #DEB887; /* Burlywood */
+  
+  --color-success: #2E8B57; /* Vert forêt */
+  --color-warning: #FF8C00; /* Orange foncé */
+  --color-error: #8B0000; /* Rouge foncé */
+  --color-info: #4682B4; /* Bleu acier */
+  
+  /* Couleurs de texte */
+  --color-text: #3A2E22; /* Marron très foncé (presque noir) */
+  --color-text-light: #654321; /* Marron foncé */
+  --color-text-muted: #8B7355; /* Tan foncé */
+  --color-text-inverse: #F5F5F5; /* Blanc cassé */
+  
+  /* Couleurs de fond */
+  --color-background: #FDF6E8; /* Blanc cassé très clair */
+  --color-background-light: #FFFFFF;
+  --color-background-dark: #F5F5F5;
+  
+  /* Couleurs des cartes */
+  --color-card: #FFFFFF;
+  --color-card-border: #D2B48C; /* Tan */
+  
+  /* Ombre */
+  --shadow-sm: 0 1px 2px rgba(139, 69, 19, 0.1);
+  --shadow-md: 0 4px 6px rgba(139, 69, 19, 0.15);
+  --shadow-lg: 0 10px 15px rgba(139, 69, 19, 0.2);
+  
+  /* Bordures */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.35s ease;
+  
+  /* Espacements */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* Tailles de police */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  
+  /* Poids de police */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Familles de polices */
+  --font-family-sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-family-serif: Georgia, "Times New Roman", Times, serif;
+  --font-family-mono: "Courier New", Courier, monospace;
+}
+
+/* ================
+   RESET CSS
+   ================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  min-height: 100vh;
+}
+
+/* ================
+   TYPOGRAPHIE
+   ================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-serif);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--color-primary-dark);
+}
+
+h1 { font-size: var(--font-size-3xl); }
+h2 { font-size: var(--font-size-2xl); }
+h3 { font-size: var(--font-size-xl); }
+h4 { font-size: var(--font-size-lg); }
+h5 { font-size: var(--font-size-md); }
+h6 { font-size: var(--font-size-sm); }
+
+p {
+  margin-bottom: var(--spacing-md);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+/* ================
+   LIENS ET BOUTONS
+   ================ */
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* ================
+   FORMULAIRES
+   ================ */
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(139, 69, 19, 0.2);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ================
+   UTILITAIRES
+   ================ */
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error { color: var(--color-error); }
+.text-muted { color: var(--color-text-muted); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-background { background-color: var(--color-background); }
+.bg-card { background-color: var(--color-card); }
+
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+
+.rounded-sm { border-radius: var(--border-radius-sm); }
+.rounded-md { border-radius: var(--border-radius-md); }
+.rounded-lg { border-radius: var(--border-radius-lg); }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+/* ================
+   ANIMATIONS
+   ================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-normal);
+}
+
+.slide-up {
+  animation: slideUp var(--transition-normal);
+}
+
+.pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ================
+   SCROLLBAR
+   ================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary-dark);
+}
+
+/* ================
+   PWA: MODE SOMBRE
+   ================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #D2B48C;
+    --color-primary-light: #E6C299;
+    --color-primary-dark: #8B7355;
+    
+    --color-secondary: #8B4513;
+    --color-secondary-light: #A0522D;
+    --color-secondary-dark: #654321;
+    
+    --color-accent: #4A3728;
+    --color-accent-light: #654321;
+    --color-accent-dark: #2E1A10;
+    
+    --color-text: #F5F5F5;
+    --color-text-light: #D2B48C;
+    --color-text-muted: #8B7355;
+    
+    --color-background: #2E1A10;
+    --color-background-light: #4A3728;
+    --color-background-dark: #1A100C;
+    
+    --color-card: #4A3728;
+    --color-card-border: #8B4513;
+    
+    --shadow-sm: 0 1px 2px rgba(139, 69, 19, 0.3);
+    --shadow-md: 0 4px 6px rgba(139, 69, 19, 0.4);
+    --shadow-lg: 0 10px 15px rgba(139, 69, 19, 0.5);
+  }
+  
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+  }
+  
+  input, textarea, select {
+    background-color: var(--color-background-dark);
+    border-color: var(--color-card-border);
+    color: var(--color-text);
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(210, 180, 140, 0.3);
+  }
+}
+
+/* ================
+   PWA: STYLES POUR L'APP MOBILE
+   ================ */
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .container {
+    padding: 0 var(--spacing-sm);
+  }
+}

@@ -1,0 +1,207 @@
+/* Styles pour la page des objets globaux */
+
+.container {
+  min-height: calc(100vh - 100px);
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* En-tête */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d4b896;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  color: #2e1a10;
+  margin: 0;
+}
+
+.headerDescription {
+  color: #6b5b47;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Boutons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btnPrimary {
+  background-color: #8b4513;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: #6a350f;
+}
+
+.btnSecondary {
+  background-color: #fdf6e8;
+  color: #8b4513;
+  border: 1px solid #d4b896;
+}
+
+.btnSecondary:hover {
+  background-color: #f0e6d8;
+}
+
+/* Filtres */
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d4b896;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #2e1a10;
+  background-color: white;
+  cursor: pointer;
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: #8b4513;
+}
+
+.filterLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b5b47;
+}
+
+/* Barre de recherche */
+.searchContainer {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d4b896;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #2e1a10;
+  background-color: #fdf6e8;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #8b4513;
+}
+
+.searchInput::placeholder {
+  color: #a08a6b;
+}
+
+/* Grille des objets */
+.objectsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Message vide */
+.emptyMessage {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b5b47;
+}
+
+.emptyMessage h2 {
+  color: #2e1a10;
+  margin-bottom: 1rem;
+}
+
+.emptyMessage p {
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  line-height: 1.5;
+}
+
+/* Message de chargement */
+.loadingMessage {
+  text-align: center;
+  padding: 2rem;
+  color: #6b5b47;
+}
+
+/* En-tête de section */
+.sectionHeader {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  color: #2e1a10;
+  margin: 0;
+}
+
+.sectionSubtitle {
+  color: #6b5b47;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Badge de type */
+.typeBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: #f0e6d8;
+  color: #8b4513;
+}
+
+/* Badge de quantité totale */
+.totalBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #d4b896;
+  color: #2e1a10;
+}
+
+/* Conteneur d'une carte */
+.cardContainer {
+  transition: transform 0.2s ease;
+}
+
+.cardContainer:hover {
+  transform: translateY(-2px);
+}

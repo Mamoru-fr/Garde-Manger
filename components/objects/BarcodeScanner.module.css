@@ -1,0 +1,182 @@
+/* Style pour le scanner de codes-barres */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Conteneur de l'aperçu de la caméra */
+.previewContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #fdf6e8;
+  border: 2px solid #d4b896;
+}
+
+.preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Message d'erreur ou d'état */
+.message {
+  padding: 1rem;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.messageError {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.messageWarning {
+  background-color: rgba(251, 146, 60, 0.1);
+  color: #ea580c;
+  border: 1px solid #fde68a;
+}
+
+.messageInfo {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  border: 1px solid #d1fae5;
+}
+
+/* Conteneur du champ de saisie manuelle */
+.fallbackContainer {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d4b896;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #2e1a10;
+  background-color: #fdf6e8;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #8b4513;
+}
+
+/* Bouton */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btnPrimary {
+  background-color: #8b4513;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: #6a350f;
+}
+
+.btnSecondary {
+  background-color: #fdf6e8;
+  color: #8b4513;
+  border: 1px solid #d4b896;
+}
+
+.btnSecondary:hover {
+  background-color: #f0e6d8;
+}
+
+/* Conteneur des actions */
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+/* Lien de fallback */
+.fallbackLink {
+  color: #8b4513;
+  text-decoration: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.fallbackLink:hover {
+  text-decoration: underline;
+}
+
+/* Conteneur du résultat */
+.resultContainer {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #fdf6e8;
+  border-radius: 8px;
+  border: 1px solid #d4b896;
+}
+
+.resultTitle {
+  font-size: 0.875rem;
+  color: #6b5b47;
+  margin-bottom: 0.5rem;
+}
+
+.resultValue {
+  font-size: 1.125rem;
+  color: #2e1a10;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+/* Bouton de détecter */
+.detectBtn {
+  align-self: center;
+}
+
+/* Zone de scan active */
+.scanZone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+/* Passage à la saisie manuelle */
+.fallbackIntro {
+  text-align: center;
+  padding: 1rem;
+  color: #6b5b47;
+}
+
+/* Conteneur du code-barres détecté */
+.barcodeDisplay {
+  margin-top: 1rem;
+  text-align: center;
+  font-family: monospace;
+  font-size: 1.25rem;
+  color: #2e1a10;
+  background-color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #d4b896;
+}

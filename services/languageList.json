@@ -1,0 +1,14 @@
+{
+    "en": {
+        "abbreviation": "En",
+        "name": "English",
+        "nativeName": "English",
+        "flag": "🇬🇧"
+    },
+    "fr": {
+        "abbreviation": "Fr",
+        "name": "French",
+        "nativeName": "Français",
+        "flag": "🇫🇷"
+    }
+}

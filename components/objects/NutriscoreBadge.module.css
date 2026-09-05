@@ -1,0 +1,93 @@
+/* Style pour le badge Nutriscore */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Nutriscore A (excellent) */
+.nutriscoreA {
+  background-color: #008000; /* Vert foncé */
+}
+
+/* Nutriscore B (bon) */
+.nutriscoreB {
+  background-color: #2ECC40; /* Vert clair */
+}
+
+/* Nutriscore C (moyen) */
+.nutriscoreC {
+  background-color: #FFBF00; /* Jaune */
+  color: #000;
+}
+
+/* Nutriscore D (mauvais) */
+.nutriscoreD {
+  background-color: #FF8C00; /* Orange */
+  color: #000;
+}
+
+/* Nutriscore E (très mauvais) */
+.nutriscoreE {
+  background-color: #FF4000; /* Rouge */
+}
+
+/* Nutriscore inconnu */
+.nutriscoreUnknown {
+  background-color: #808080; /* Gris */
+}
+
+/* Taille réduite */
+.small {
+  width: 30px;
+  height: 30px;
+  font-size: 0.875rem;
+}
+
+/* Taille agrandie */
+.large {
+  width: 50px;
+  height: 50px;
+  font-size: 1.5rem;
+}
+
+/* Avec label */
+.withLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: #6b5b47;
+}
+
+/* Tooltip (optionnel) */
+.tooltip {
+  position: relative;
+}
+
+.tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.75rem;
+  background-color: #2e1a10;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+}

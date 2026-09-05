@@ -1,0 +1,142 @@
+/* ================
+   BASE
+   ================ */
+
+.base {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-card);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+/* ================
+   VARIANTES
+   ================ */
+
+.default {
+  border: 1px solid var(--color-card-border);
+}
+
+.primary {
+  border: 1px solid var(--color-primary);
+}
+
+.secondary {
+  border: 1px solid var(--color-secondary);
+}
+
+/* ================
+   PADDING
+   ================ */
+
+.padding_none {
+  padding: 0;
+}
+
+.padding_sm {
+  padding: var(--spacing-sm);
+}
+
+.padding_md {
+  padding: var(--spacing-md);
+}
+
+.padding_lg {
+  padding: var(--spacing-lg);
+}
+
+/* ================
+   OMBOXES
+   ================ */
+
+.shadow_none {
+  box-shadow: none;
+}
+
+.shadow_sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow_md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow_lg {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ================
+   ÉTATS
+   ================ */
+
+.hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:active {
+  transform: translateY(0);
+}
+
+.clickable:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ================
+   SOUS-COMPOSANTS
+   ================ */
+
+.header {
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-card-border);
+  margin-bottom: var(--spacing-sm);
+}
+
+.content {
+  flex: 1;
+}
+
+.footer {
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-card-border);
+  margin-top: var(--spacing-sm);
+}
+
+.footer:empty {
+  display: none;
+}
+
+/* ================
+   ALIGNEMENTS
+   ================ */
+
+.headerCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.headerBetween {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footerCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.footerBetween {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

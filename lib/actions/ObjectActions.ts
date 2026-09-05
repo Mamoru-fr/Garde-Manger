@@ -1,0 +1,986 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/auth";
+import { getAuthHeaders } from "@/lib/utils/auth";
+import { ObjectController } from "@/lib/controllers/ObjectController";
+import { InstallationController } from "@/lib/controllers/InstallationController";
+import { ActionResponse, ErrorCodes } from "@/lib/types";
+
+// ============================================================================
+// ACTIONS POUR LA GESTION DES OBJETS DANS L'ANNUAIRE
+// ============================================================================
+
+// Action pour créer un nouvel objet dans l'annuaire
+export async function createObjectDirectory(
+  prevState: ActionResponse<{ objectId: string }> | null,
+  formData: FormData
+): Promise<ActionResponse<{ objectId: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour créer un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Extraire les données du formulaire
+    const input = {
+      name: formData.get("name") as string,
+      description: formData.get("description") as string | undefined,
+      categoryId: formData.get("categoryId") as string | undefined,
+      unitId: formData.get("unitId") as string | undefined,
+    };
+
+    // Appeler le contrôleur
+    const result = await ObjectController.createObjectDirectory(
+      input,
+      session.user.id
+    );
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Rediriger vers la page de l'objet
+    redirect(`/objects/${result.data?.objectId}`);
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la création de l'objet:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la création de l'objet",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour rechercher des objets
+export async function searchObjects(
+  search?: string,
+  categoryId?: string,
+  limit: number = 20,
+  offset: number = 0
+): Promise<ActionResponse<{
+  objects: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    category: string | null;
+    unit: string | null;
+  }>;
+  total: number;
+}>> {
+  try {
+    const result = await ObjectController.searchObjects({
+      search,
+      categoryId,
+      limit,
+      offset,
+    });
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la recherche d'objets:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la recherche d'objets",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour ajouter un code-barres à un objet
+export async function addBarcodeToObject(
+  prevState: ActionResponse<{ barcodeId: string }> | null,
+  formData: FormData
+): Promise<ActionResponse<{ barcodeId: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour ajouter un code-barres",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const objectDirectoryId = formData.get("objectDirectoryId") as string;
+    const barcode = formData.get("barcode") as string;
+
+    // Appeler le contrôleur
+    const result = await ObjectController.addBarcodeToObject(
+      objectDirectoryId,
+      barcode
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de l'ajout du code-barres:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de l'ajout du code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour rechercher un objet par code-barres
+export async function searchObjectByBarcode(
+  barcode: string
+): Promise<ActionResponse<{
+  object: {
+    id: string;
+    name: string;
+    description: string | null;
+  };
+} | null>> {
+  try {
+    const result = await ObjectController.searchObjectByBarcode(barcode);
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la recherche par code-barres:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la recherche par code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// ============================================================================
+// ACTIONS POUR LES OBJETS DANS LES INSTALLATIONS
+// ============================================================================
+
+// Action pour ajouter un objet à une installation
+export async function addObjectToInstallation(
+  prevState: ActionResponse<{ objectInstallationId: string }> | null,
+  formData: FormData
+): Promise<ActionResponse<{ objectInstallationId: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour ajouter un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const installationId = formData.get("installationId") as string;
+    const objectDirectoryId = formData.get("objectDirectoryId") as string;
+    const quantity = parseInt(formData.get("quantity") as string) || 1;
+    const location = formData.get("location") as string | undefined;
+    const expiryDateString = formData.get("expiryDate") as string | undefined;
+    
+    let expiryDate: Date | undefined;
+    if (expiryDateString) {
+      expiryDate = new Date(expiryDateString);
+    }
+
+    // Appeler le contrôleur
+    const result = await ObjectController.addObjectToInstallation(
+      installationId,
+      objectDirectoryId,
+      quantity,
+      session.user.id,
+      location,
+      expiryDate
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de l'ajout de l'objet:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de l'ajout de l'objet",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour scanner un code-barres et ajouter un objet à une installation
+export async function scanAndAddObject(
+  installationId: string,
+  barcode: string,
+  quantity: number = 1
+): Promise<ActionResponse<{ 
+  objectInstallationId: string; 
+  foundByBarcode: boolean; 
+}>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour ajouter un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Rechercher l'objet par code-barres
+    const searchResult = await ObjectController.searchObjectByBarcode(barcode);
+    
+    if (searchResult.success && searchResult.data && searchResult.data.object) {
+      // Objet trouvé par code-barres
+      const objectId = searchResult.data.object.id;
+      
+      // Ajouter l'objet à l'installation
+      const addResult = await ObjectController.addObjectToInstallation(
+        installationId,
+        objectId,
+        quantity,
+        session.user.id
+      );
+
+      if (addResult.success) {
+        return {
+          success: true,
+          data: {
+            objectInstallationId: addResult.data!.objectInstallationId,
+            foundByBarcode: true,
+          },
+        };
+      }
+      
+      return addResult as ActionResponse<{ objectInstallationId: string; foundByBarcode: boolean; }>;
+    }
+
+    // Objet non trouvé par code-barres, retourner une réponse spéciale
+    return {
+      success: true,
+      data: {
+        objectInstallationId: "",
+        foundByBarcode: false,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors du scan:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors du scan",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour rechercher et ajouter un objet par nom
+export async function searchAndAddObject(
+  installationId: string,
+  name: string,
+  quantity: number = 1
+): Promise<ActionResponse<{ 
+  objectInstallationId: string; 
+  objectId: string; 
+}>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour ajouter un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Chercher l'objet par nom
+    const searchResult = await ObjectController.searchObjects({
+      search: name,
+      limit: 1,
+    });
+    
+    if (searchResult.success && searchResult.data && searchResult.data.objects.length > 0) {
+      const objectId = searchResult.data.objects[0].id;
+      
+      // Ajouter l'objet à l'installation
+      const addResult = await ObjectController.addObjectToInstallation(
+        installationId,
+        objectId,
+        quantity,
+        session.user.id
+      );
+
+      if (addResult.success) {
+        return {
+          success: true,
+          data: {
+            objectInstallationId: addResult.data!.objectInstallationId,
+            objectId: objectId,
+          },
+        };
+      }
+      
+      return addResult as ActionResponse<{ objectInstallationId: string; objectId: string; }>;
+    }
+
+    // Objet non trouvé, créer un nouvel objet
+    const createResult = await ObjectController.createObjectDirectory(
+      { name },
+      session.user.id
+    );
+    
+    if (createResult.success) {
+      const objectId = createResult.data!.objectId;
+      
+      // Ajouter le nouvel objet à l'installation
+      const addResult = await ObjectController.addObjectToInstallation(
+        installationId,
+        objectId,
+        quantity,
+        session.user.id
+      );
+
+      if (addResult.success) {
+        return {
+          success: true,
+          data: {
+            objectInstallationId: addResult.data!.objectInstallationId,
+            objectId: objectId,
+          },
+        };
+      }
+    }
+
+    return createResult as ActionResponse<{ objectInstallationId: string; objectId: string; }>;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la recherche et ajout:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la recherche et ajout",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour mettre à jour un objet dans une installation
+export async function updateObjectInInstallation(
+  prevState: ActionResponse<void> | null,
+  formData: FormData
+): Promise<ActionResponse<void>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour mettre à jour un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const objectInstallationId = formData.get("objectInstallationId") as string;
+    const quantityString = formData.get("quantity") as string;
+    const location = formData.get("location") as string | undefined;
+    const expiryDateString = formData.get("expiryDate") as string | undefined;
+
+    const input: {
+      quantity?: number;
+      location?: string;
+      expiryDate?: Date;
+    } = {};
+
+    if (quantityString) {
+      input.quantity = parseInt(quantityString);
+    }
+    if (location) {
+      input.location = location;
+    }
+    if (expiryDateString) {
+      input.expiryDate = new Date(expiryDateString);
+    }
+
+    // Appeler le contrôleur
+    const result = await ObjectController.updateObjectInInstallation(
+      objectInstallationId,
+      session.user.id,
+      input
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la mise à jour:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la mise à jour",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour supprimer un objet d'une installation
+export async function removeObjectFromInstallation(
+  objectInstallationId: string
+): Promise<ActionResponse<void>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour supprimer un objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Appeler le contrôleur
+    const result = await ObjectController.removeObjectFromInstallation(
+      objectInstallationId,
+      session.user.id
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la suppression:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la suppression",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour obtenir les objets d'une installation
+export async function getObjectsInInstallation(
+  installationId: string
+): Promise<ActionResponse<{
+  objects: Array<{
+    id: string;
+    objectDirectoryId: string;
+    name: string;
+    category: string | null;
+    unit: string | null;
+    quantity: number;
+    location: string | null;
+    expiryDate: Date | null;
+    barcode: string | null;
+  }>;
+}>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les objets",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.getObjectsInInstallation(
+      installationId,
+      session.user.id
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des objets:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des objets",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour obtenir les détails d'un objet
+export async function getObjectDirectoryDetails(
+  objectId: string
+): Promise<ActionResponse<{
+  object: {
+    id: string;
+    name: string;
+    description: string | null;
+    category: { id: string; name: string; type: string } | null;
+    unit: { id: string; name: string; symbol: string; type: string } | null;
+    defaultQuantity: number;
+    barcodes: Array<{ id: string; barcode: string; barcodeType: string }>;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}>> {
+  try {
+    const result = await ObjectController.getObjectDirectoryDetails(objectId);
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des détails:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des détails",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour obtenir les statistiques d'une installation
+export async function getInstallationStats(
+  installationId: string
+): Promise<ActionResponse<{
+  stats: {
+    totalObjects: number;
+    totalQuantity: number;
+    objectsByCategory: Array<{ category: string; count: number }>;
+    expiringSoon: number;
+    expired: number;
+    valid: number;
+  };
+}>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les statistiques",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.getInstallationStats(
+      installationId,
+      session.user.id
+    );
+
+    if (!result.success) {
+      return result;
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des statistiques:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des statistiques",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour obtenir les objets expirés
+export async function getExpiringObjects(
+  installationId: string,
+  days: number = 7
+): Promise<ActionResponse<{
+  objects: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    location: string | null;
+    expiryDate: Date;
+    daysLeft: number;
+  }>;
+}>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les objets expirés",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.getExpiringObjects(
+      installationId,
+      session.user.id,
+      days
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des objets expirés:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des objets expirés",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour importer des objets
+export async function importObjects(
+  installationId: string,
+  jsonData: string
+): Promise<ActionResponse<{ importedCount: number; failedCount: number }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour importer des objets",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Parser le JSON
+    let objects;
+    try {
+      objects = JSON.parse(jsonData);
+    } catch (parseError) {
+      return {
+        success: false,
+        error: "Le fichier JSON est invalide",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Vérifier que c'est un tableau
+    if (!Array.isArray(objects)) {
+      return {
+        success: false,
+        error: "Le fichier doit contenir un tableau d'objets",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Ajouter l'installationId à chaque objet
+    const objectsWithInstallationId = objects.map(obj => ({
+      ...obj,
+      installationId,
+    }));
+
+    const result = await ObjectController.importObjects(
+      objectsWithInstallationId,
+      session.user.id
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de l'import:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de l'import",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour exporter des objets
+export async function exportObjects(
+  installationId: string
+): Promise<ActionResponse<{ exportData: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour exporter des objets",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.exportObjects(
+      installationId,
+      session.user.id
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de l'export:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de l'export",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour supprimer un objet de l'annuaire
+export async function deleteObjectFromDirectory(
+  objectId: string
+): Promise<ActionResponse<void>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+    
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour supprimer un objet de l'annuaire",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.deleteObjectFromDirectory(objectId);
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la suppression de l'annuaire:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la suppression de l'annuaire",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// ============================================================================
+// NOUVELLES ACTIONS POUR LA GESTION DES OBJETS GLOBAUX
+// ============================================================================
+
+// Action pour récupérer un objet global avec toutes ses instances
+export async function getGlobalObject(
+  objectDirectoryId: string
+): Promise<ActionResponse<any>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir cet objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.getGlobalObject(
+      objectDirectoryId,
+      session.user.id
+    );
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération de l'objet global:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération de l'objet global",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour récupérer les instances d'un objet global dans une installation
+export async function getObjectInstances(
+  objectDirectoryId: string,
+  installationId: string
+): Promise<ActionResponse<any>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir ces informations",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier que l'utilisateur a accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Tu n'as pas accès à cette installation",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    const result = await ObjectController.getObjectInstances(
+      objectDirectoryId,
+      installationId
+    );
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des instances:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des instances",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour récupérer les données nutritionnelles depuis OpenFoodFacts
+export async function fetchNutritionalData(
+  barcode: string
+): Promise<ActionResponse<any>> {
+  try {
+    // Récupérer la session (optionnel, pour logging)
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    const result = await ObjectController.fetchNutritionalData(barcode);
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des données OpenFoodFacts:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération des données nutritionnelles",
+      code: ErrorCodes.OPEN_FOOD_FACTS_ERROR,
+    };
+  }
+}
+
+// ============================================================================
+// ACTIONS POUR LES TYPES D'OBJETS
+// ============================================================================
+
+// Action pour créer un type d'objet
+export async function createObjectType(
+  prevState: ActionResponse<{ objectTypeId: string }> | null,
+  formData: FormData
+): Promise<ActionResponse<{ objectTypeId: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour créer un type d'objet",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string | undefined;
+    const icon = formData.get("icon") as string | undefined;
+    const parentTypeId = formData.get("parentTypeId") as string | undefined;
+
+    const result = await ObjectController.createObjectType(
+      name,
+      description,
+      icon,
+      parentTypeId
+    );
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la création du type:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la création du type",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour lister tous les types d'objets
+export async function listObjectTypes(): Promise<ActionResponse<any>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les types",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.listObjectTypes();
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des types:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des types",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// ============================================================================
+// ACTIONS POUR LES MAGASINS
+// ============================================================================
+
+// Action pour créer un magasin
+export async function createShop(
+  prevState: ActionResponse<{ shopId: string }> | null,
+  formData: FormData
+): Promise<ActionResponse<{ shopId: string }>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour créer un magasin",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const name = formData.get("name") as string;
+    const address = formData.get("address") as string | undefined;
+    const city = formData.get("city") as string | undefined;
+
+    const result = await ObjectController.createShop(name, address, city);
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la création du magasin:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la création du magasin",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// Action pour lister tous les magasins
+export async function listShops(): Promise<ActionResponse<any>> {
+  try {
+    // Récupérer la session
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les magasins",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const result = await ObjectController.listShops();
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur lors de la récupération des magasins:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des magasins",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
