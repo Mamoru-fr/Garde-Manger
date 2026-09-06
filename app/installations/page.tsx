@@ -3,7 +3,9 @@ import { getCurrentSession } from "@/lib/utils/auth";
 import { getUserInstallations } from "@/lib/actions/InstallationActions";
 import InstallationsClient from "./InstallationsClient";
 
-// Page d'installations - Server Component avec vérification de session
+// Page dinstallations - Server Component avec vérification de session
+// ⭐ FORCER LE RENDU DYNAMIQUE car on utilise headers() pour la session ⭐
+export const dynamic = 'force-dynamic';
 
 export default async function InstallationsPage() {
   // Vérification côté serveur de la session
