@@ -416,16 +416,19 @@ export default function ScanClient({ installationId, installationName }: ScanCli
                 <button
                   onClick={toggleCamera}
                   className={styles.controlButton}
-                  title={`Basculer camera ${scannerConfig.facingMode === 'environment' ? 'arriere' : 'avant'}`}
+                  title={`Basculer vers caméra ${scannerConfig.facingMode === 'environment' ? 'avant' : 'arrière'}`}
                 >
-                  {scannerConfig.facingMode === 'environment' ? <Camera size={20} /> : <CameraOff size={20} />}
+                  {scannerConfig.facingMode === 'environment' ? <Camera size={20} /> : <Camera size={20} style={{ transform: 'scaleX(-1)' }} />}
+                  <span className={styles.cameraLabel}>
+                    {scannerConfig.facingMode === 'environment' ? 'Arrière' : 'Avant'}
+                  </span>
                 </button>
                 
                 {scannerConfig.facingMode === 'environment' && (
                   <button
                     onClick={toggleTorch}
                     className={`${styles.controlButton} ${scannerConfig.torchOn ? styles.controlButtonActive : ''}`}
-                    title={scannerConfig.torchOn ? "Eteindre la lampe" : "Allumer la lampe"}
+                    title={scannerConfig.torchOn ? "Éteindre la lampe" : "Allumer la lampe"}
                     disabled={!streamRef.current || scanStatus !== 'scanning'}
                   >
                     {scannerConfig.torchOn ? <Eye size={20} /> : <EyeOff size={20} />}

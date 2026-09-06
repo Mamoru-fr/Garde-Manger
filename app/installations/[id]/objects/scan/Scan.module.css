@@ -173,6 +173,19 @@
   color: white;
 }
 
+/* Label pour le bouton de caméra */
+.cameraLabel {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5D4037;
+}
+
+.controlButton .cameraLabel {
+  display: inline;
+  line-height: 1;
+}
+
 /* Loading Container */
 .loadingContainer {
   flex: 1;
