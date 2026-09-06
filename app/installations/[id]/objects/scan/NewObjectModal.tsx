@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Check, X, Barcode as BarcodeIcon, Plus, Minus, Package, Clock } from "lucide-react";
+import { Check, X, Barcode as BarcodeIcon, Plus, Minus, Package, Clock, Lock } from "lucide-react";
 import { addScannedObject } from "@/lib/actions/ObjectActions";
+import { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import styles from "./Scan.module.css";
 
 interface NewObjectModalProps {
@@ -10,6 +11,7 @@ interface NewObjectModalProps {
   installationId: string;
   onClose: () => void;
   onSuccess: () => void;
+  directoryItem?: SimplifiedDirectoryItem | null; // ✅ Objet existant à éditer (si présent)
 }
 
 // Catégories par défaut
@@ -61,12 +63,16 @@ export default function NewObjectModal({
   installationId,
   onClose,
   onSuccess,
+  directoryItem,
 }: NewObjectModalProps) {
+  const isReadOnly = directoryItem?.isReadOnly || false; // ✅ Vérifier si verrouillé
+  
+  // ✅ Pré-remplir le formulaire si directoryItem est présent
   const [formData, setFormData] = useState<NewObjectForm>({
-    name: "",
-    category: "",
-    description: "",
-    brand: "",
+    name: directoryItem?.name || "",
+    category: directoryItem?.category || "",
+    description: directoryItem?.description || "",
+    brand: directoryItem?.brand || "",
     quantity: 1,
     unit: "unité",
     location: "",
@@ -155,12 +161,20 @@ export default function NewObjectModal({
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>
             <Package size={20} />
-            Nouvel objet
+            {directoryItem ? "Modifier l'objet" : "Nouvel objet"}
           </h2>
           <button onClick={onClose} className={styles.modalClose} aria-label="Fermer">
             <X size={20} />
           </button>
         </div>
+
+        {/* Message pour les objets verrouillés */}
+        {isReadOnly && (
+          <div className={styles.readOnlyHeader}>
+            <Lock size={16} />
+            <span>Les informations de cet objet proviennent d'OpenFoodFacts et ne peuvent pas être modifiées.</span>
+          </div>
+        )}
 
         {/* Contenu */}
         <div className={styles.modalBody}>
@@ -188,6 +202,7 @@ export default function NewObjectModal({
                 className={styles.formInput}
                 autoFocus
                 aria-required="true"
+                disabled={isReadOnly} // ✅ Désactivé si verrouillé
               />
             </div>
 
@@ -201,6 +216,7 @@ export default function NewObjectModal({
                 onChange={(e) => handleStringChange("brand", e.target.value)}
                 placeholder="Ex: Carrefour, Nestlé"
                 className={styles.formInput}
+                disabled={isReadOnly} // ✅ Désactivé si verrouillé
               />
             </div>
 
@@ -212,6 +228,7 @@ export default function NewObjectModal({
                 value={formData.category}
                 onChange={(e) => handleStringChange("category", e.target.value)}
                 className={styles.formSelect}
+                disabled={isReadOnly} // ✅ Désactivé si verrouillé
               >
                 {DEFAULT_CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -311,6 +328,7 @@ export default function NewObjectModal({
                 placeholder="Ex: Lait UHT, 1L, demi-écrémé"
                 className={styles.formTextarea}
                 rows={2}
+                disabled={isReadOnly} // ✅ Désactivé si verrouillé
               />
             </div>
 

@@ -176,6 +176,13 @@ export default function ScanResultModal({
 
           {/* Statut */}
           {getStatusMessage()}
+          
+          {/* Message pour les objets verrouillés */}
+          {item.isReadOnly && (
+            <div className={styles.readOnlyNotice}>
+              <span>✅ Informations issues d.OpenFoodFacts (non modifiables)</span>
+            </div>
+          )}
 
           {/* Quantité actuelle */}
           {currentQuantity > 0 && (

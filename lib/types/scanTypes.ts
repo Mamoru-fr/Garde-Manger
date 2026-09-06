@@ -151,6 +151,7 @@ export interface SimplifiedDirectoryItem {
   // Champs supplémentaires utiles
   productName?: string; // Nom complet du produit
   openFoodFactsId?: string; // ID dans OpenFoodFacts
+  isReadOnly?: boolean; // ✅ true si l'objet vient d'OpenFoodFacts (non modifiable)
 }
 
 // Résultat complet du scan avec l'annuaire

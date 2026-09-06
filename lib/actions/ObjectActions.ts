@@ -990,7 +990,7 @@ export async function listShops(): Promise<ActionResponse<any>> {
 // ==========================================================================
 
 import { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
-import { searchProductInDirectory } from "./DirectoryActions";
+import { searchProductInDirectory } from "@/lib/services/DirectoryService";
 import { db } from "@/lib/db/drizzle";
 import { objectInstallation, installations, userInstallations, users, objectDirectory, barcodeDirectory } from "@/lib/db/schema";
 import { and, eq, desc, inArray } from "drizzle-orm";

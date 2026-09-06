@@ -580,6 +580,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
           installationId={installationId}
           onClose={handleCloseModals}
           onSuccess={handleActionSuccess}
+          directoryItem={scanResult?.directoryItem || null} // ✅ Passer l'objet pour vérifier isReadOnly
         />
       )}
     </div>

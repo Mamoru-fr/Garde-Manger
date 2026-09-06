@@ -269,6 +269,7 @@ export const objectDirectory = pgTable("object_directory", {
   brand: text("brand"),  // Marque (ex: "Chiquita", "Carrefour")
   openFoodFactsId: text("open_food_facts_id"),  // ID pour l'API OpenFoodFacts
   defaultQuantity: integer("default_quantity").default(1),
+  isReadOnly: boolean("is_read_only").default(false),  // ✅ Verrouillage pour les objets OpenFoodFacts
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => {
