@@ -19,6 +19,7 @@ export const ErrorCodes = {
   FORBIDDEN: "FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
   INTERNAL_ERROR: "INTERNAL_ERROR",
+  CONFLICT: "CONFLICT",
   
   // Erreurs spécifiques à l'application
   USER_NOT_FOUND: "USER_NOT_FOUND",

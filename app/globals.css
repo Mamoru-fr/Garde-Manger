@@ -373,3 +373,28 @@ input::placeholder, textarea::placeholder {
     padding: 0 var(--spacing-sm);
   }
 }
+
+/* ================
+   ANIMATIONS POUR LES MODAUX
+   ================ */
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-fade-in {
+  animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+/* Style pour le modal */
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}

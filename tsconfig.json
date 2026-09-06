@@ -31,6 +31,9 @@
       "@/components/*": [
         "./components/*"
       ],
+      "@/context/*": [
+        "./context/*"
+      ],
       "@/styles/*": [
         "./styles/*"
       ]

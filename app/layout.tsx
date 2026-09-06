@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
+import { ServerSessionProvider } from "@/lib/components/ServerSessionProvider";
 
 // Police Inter (moderne et lisible)
 const inter = Inter({ subsets: ["latin"] });
@@ -78,7 +79,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className}>
-        {children}
+        <ServerSessionProvider>
+          {children}
+        </ServerSessionProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>

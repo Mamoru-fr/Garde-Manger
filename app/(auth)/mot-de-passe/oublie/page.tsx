@@ -3,9 +3,12 @@ import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 
+export const dynamic = 'force-dynamic';
+
 export default async function ForgotPasswordPage() {
   // Vérifier si l'utilisateur est déjà connecté
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   if (session?.user) {
     redirect("/installations");
   }

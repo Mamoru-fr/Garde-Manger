@@ -23,7 +23,8 @@ export async function createInstallation(
   formData: FormData
 ): Promise<ActionResponse<{ installationId: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -79,7 +80,9 @@ export async function getUserInstallations(): Promise<ActionResponse<{
   }[];
 }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  // nextCookies plugin gère automatiquement les cookies
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -115,7 +118,8 @@ export async function getInstallationById(
   };
 }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -140,7 +144,8 @@ export async function updateInstallation(
   formData: FormData
 ): Promise<ActionResponse<{ installationId: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -191,7 +196,8 @@ export async function deleteInstallation(
   formData: FormData
 ): Promise<ActionResponse<{ installationId: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -236,7 +242,8 @@ export async function addUserToInstallation(
   formData: FormData
 ): Promise<ActionResponse<{ userInstallationId: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -282,7 +289,8 @@ export async function removeUserFromInstallation(
   formData: FormData
 ): Promise<ActionResponse<{ userInstallationId: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -325,7 +333,8 @@ export async function checkInstallationAccess(
   installationId: string
 ): Promise<ActionResponse<{ hasAccess: boolean; role: string }>> {
   // Récupérer la session utilisateur
-  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
   
   if (!session?.user) {
     return {
@@ -339,6 +348,66 @@ export async function checkInstallationAccess(
   const result = await InstallationController.checkAccess(
     session.user.id,
     installationId
+  );
+
+  return result;
+}
+
+// ================
+// FONCTIONS SIMPLIFIÉES POUR LE MODAL DE GESTION DES MEMBRES
+// ================
+
+// Ajouter un membre à une installation (version simplifiée pour le modal)
+export async function addMemberToInstallation(
+  installationId: string,
+  userEmail: string,
+  role: string
+): Promise<ActionResponse<{ userInstallationId: string }>> {
+  // Récupérer la session utilisateur
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
+
+  if (!session?.user) {
+    return {
+      success: false,
+      error: "Tu dois être connecté pour ajouter des membres",
+      code: ErrorCodes.UNAUTHORIZED,
+    };
+  }
+
+  // Appel au contrôleur avec l'email
+  const result = await InstallationController.addMemberByEmail(
+    installationId,
+    session.user.id,
+    userEmail,
+    role
+  );
+
+  return result;
+}
+
+// Supprimer un membre d'une installation (version simplifiée pour le modal)
+export async function removeMemberFromInstallation(
+  installationId: string,
+  userId: string
+): Promise<ActionResponse<{ userInstallationId: string }>> {
+  // Récupérer la session utilisateur
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
+
+  if (!session?.user) {
+    return {
+      success: false,
+      error: "Tu dois être connecté pour supprimer des membres",
+      code: ErrorCodes.UNAUTHORIZED,
+    };
+  }
+
+  // Appel au contrôleur
+  const result = await InstallationController.removeMember(
+    installationId,
+    session.user.id,
+    userId
   );
 
   return result;

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth/auth";
 import { db } from "@/lib/db/drizzle";
+import { getAuthHeaders } from "@/lib/utils/auth";
 import {
   SignUpInput,
   SignInInput,
@@ -33,13 +34,14 @@ export async function signupService(input: SignUpInput): Promise<ActionResponse<
       };
     }
 
-    // Créer l'utilisateur via Better-Auth
+    // Créer l'utilisateur via Better-Auth - Il faut passer les headers pour que nextCookies() fonctionne
     const response = await auth.api.signUpEmail({
       body: {
         email: input.email,
         password: input.password,
         name: input.name,
       },
+      headers: await getAuthHeaders(),
       asResponse: true,
     });
 
@@ -73,18 +75,29 @@ export async function signupService(input: SignUpInput): Promise<ActionResponse<
 
 // Connexion d'un utilisateur
 export async function signinService(input: SignInInput): Promise<ActionResponse<{ userId: string }>> {
+  console.log("🟠 [SERVICE] Début de signinService()");
+  console.log("🟠 [SERVICE] Input:", { email: input.email, password: "***" });
+  
   try {
-    // Connexion via Better-Auth
+    console.log("🟠 [SERVICE] Appel de auth.api.signInEmail()");
+    // Connexion via Better-Auth - Il faut passer les headers pour que nextCookies() fonctionne
     const response = await auth.api.signInEmail({
       body: {
         email: input.email,
         password: input.password,
       },
+      headers: await getAuthHeaders(),
       asResponse: true,
+    });
+    console.log("🟠 [SERVICE] Réponse de signInEmail:", {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText
     });
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.log("❌ [SERVICE] Erreur de Better-Auth:", errorData);
       return {
         success: false,
         error: errorData.message || "Email ou mot de passe incorrect",
@@ -93,8 +106,27 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       };
     }
 
-    // Récupérer l'utilisateur connecté
-    const user = await response.json();
+    console.log("🟠 [SERVICE] Connexion réussie");
+    
+    // Après la connexion réussie, on doit récupérer l'utilisateur depuis la DB
+    // car auth.api.getSession() peut ne pas être disponible immédiatement
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, input.email))
+      .limit(1);
+    
+    if (!userResult.length) {
+      console.log("❌ [SERVICE] Utilisateur non trouvé dans la DB après connexion");
+      return {
+        success: false,
+        error: "Utilisateur non trouvé",
+        code: ErrorCodes.USER_NOT_FOUND,
+      };
+    }
+    
+    const user = userResult[0];
+    console.log("🟠 [SERVICE] Utilisateur trouvé:", { id: user.id, email: user.email });
 
     return {
       success: true,
@@ -114,7 +146,8 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
 // Déconnexion d'un utilisateur
 export async function signoutService(): Promise<ActionResponse<void>> {
   try {
-    await auth.api.signOut();
+    // Il faut passer les headers pour que nextCookies() fonctionne
+    await auth.api.signOut({ headers: await getAuthHeaders() });
     return {
       success: true,
     };
@@ -234,7 +267,8 @@ export async function resendVerificationEmailService(email: string): Promise<Act
 // Obtenir la session utilisateur
 export async function getSessionService() {
   try {
-    const session = await auth.api.getSession();
+    // Il faut passer les headers pour que nextCookies() fonctionne
+    const session = await auth.api.getSession({ headers: await getAuthHeaders() });
     return {
       success: true,
       session,
