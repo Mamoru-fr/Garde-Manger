@@ -254,15 +254,42 @@ export default function InstallationDetailsClient({
             </div>
           </div>
           
-          {installation?.objectCount === 0 ? (
-            <div className={styles.emptyState}>
+          {/* ✅ Toujours afficher le tableau (même vide) pour éviter les problèmes de rendu */}
+          <table className={styles.tableContainer}>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Quantité</th>
+                <th>Emplacement</th>
+                <th>Péremption</th>
+                <th className={styles.tableActions}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Here we would display the actual objects */}
+              {objects.length === 0 && (
+                <tr>
+                  <td colSpan={5} className={styles.emptyState}>
+                    {installation?.objectCount === 0
+                      ? "Aucun objet dans cette installation"
+                      : "Chargement des objets..."
+                    }
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          
+          {/* Afficher lemptyState UNIQUEMENT si objectCount === 0 ET objects.length === 0 */}
+          {installation?.objectCount === 0 && objects.length === 0 && (
+            <div className={styles.emptyState} style={{ marginTop: "1rem" }}>
               <h3>Aucun objet dans cette installation</h3>
               <p>
                 Commencez à ajouter des objets pour gérer votre stock.
                 Vous pouvez ajouter des objets manuellement ou scanner leurs codes-barres.
               </p>
               {userRole !== "viewer" && (
-                <div className={styles.objectsActions} style={{ marginTop: "1rem" }}>
+                <div className={styles.objectsActions}>
                   <Link
                     href={`/installations/${installationId}/objects/add`}
                     className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
@@ -273,28 +300,6 @@ export default function InstallationDetailsClient({
                 </div>
               )}
             </div>
-          ) : (
-            <table className={styles.tableContainer}>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Quantité</th>
-                  <th>Emplacement</th>
-                  <th>Péremption</th>
-                  <th className={styles.tableActions}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Here we would display the actual objects */}
-                {objects.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className={styles.emptyState}>
-                      Aucun objet trouvé
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           )}
         </section>
       </main>

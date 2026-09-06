@@ -207,7 +207,10 @@
 /* ========== Objets ========== */
 .objectsHeader {
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* ✅ Toujours en ligne (même en mobile) */
+  flex-wrap: wrap; /* ✅ Permet le retour à la ligne si pas assez d'espace */
+  align-items: center; /* ✅ Aligner verticalement */
+  justify-content: space-between; /* ✅ Titre à gauche, boutons à droite */
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -397,12 +400,6 @@
 
   .userEmail {
     font-size: 0.875rem;
-  }
-
-  .objectsHeader {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
   }
 
   .btn {
