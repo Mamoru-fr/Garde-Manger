@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Package, Users, Calendar, MapPin, Settings, Plus, Trash2, Edit } from "lucide-react";
+import { ArrowLeft, Package, Users, Calendar, MapPin, Settings, Plus, Trash2, Edit, RefreshCw } from "lucide-react";
 import { InstallationRole } from "@/lib/types";
 import styles from "./InstallationDetails.module.css";
 import MembersModal from "./MembersModal";
@@ -78,6 +79,7 @@ export default function InstallationDetailsClient({
   sessionUserId,
   installationId,
 }: InstallationDetailsClientProps) {
+  const router = useRouter();
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const objects = []; // À remplacer par les vrais objets quand on aura le service
 
@@ -222,6 +224,16 @@ export default function InstallationDetailsClient({
           <div className={styles.objectsHeader}>
             <h2 className={styles.sectionTitle}>Objets dans cette installation</h2>
             <div className={styles.objectsActions}>
+              {/* Bouton Rafraîchir (pour tous les rôles) */}
+              <button
+                onClick={() => router.refresh()}
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                title="Rafraîchir la liste des objets"
+              >
+                <RefreshCw size={16} />
+                Rafraîchir
+              </button>
+              
               {userRole !== "viewer" && (
                 <Link
                   href={`/installations/${installationId}/objects/add`}

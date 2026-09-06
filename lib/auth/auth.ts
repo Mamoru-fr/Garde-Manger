@@ -65,16 +65,16 @@ export const auth = betterAuth({
     },
   },
 
-  // Sessions - Configuration pour Vercel et la production
+  // Sessions - Configuration stabilisée pour PWA/Web
   session: {
     cookieName: "better-auth.session_token",
     maxAge: 86400 * 30, // 30 jours
-    updateAge: 86400, // 1 jour
-    // ⭐ Configuration critique pour Vercel ⭐
+    updateAge: 86400 * 15, // ✅ 15 jours (rafraîchit le cookie toutes les 2 semaines)
+    // ⭐ Configuration adaptée pour PWA et développement local ⭐
     cookieOptions: {
       sameSite: "lax",
-      secure: true, // TOUJOURS true pour Vercel (HTTPS obligatoire)
-      // Déterminer le domaine dynamiquement
+      secure: process.env.NODE_ENV === "production", // ✅ HTTPS uniquement en prod
+      // Domaine uniquement en production (pour éviter les problèmes en local)
       domain: process.env.NEXT_VERCEL_URL
         ? new URL(process.env.NEXT_VERCEL_URL).hostname
         : undefined,
@@ -92,8 +92,9 @@ export const auth = betterAuth({
   },
   // ⭐ Configuration supplémentaire pour Vercel ⭐
   // URL de base pour les requêtes API (obligatoire en production)
-  url: process.env.NEXT_BETTER_AUTH_URL || process.env.NEXT_VERCEL_URL,
-  cookiePrefix: "__Secure-", // Préfixe pour les cookies sécurisés en HTTPS
+  url: process.env.NEXT_BETTER_AUTH_URL || process.env.NEXT_PUBLIC_VERCEL_URL,
+  // ✅ Préfixe conditionnel : __Secure- uniquement en production (HTTPS obligatoire)
+  cookiePrefix: process.env.NODE_ENV === "production" ? "__Secure-" : "",
 });
 
 // Types pour les sessions
