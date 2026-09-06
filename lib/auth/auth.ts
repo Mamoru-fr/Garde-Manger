@@ -65,28 +65,35 @@ export const auth = betterAuth({
     },
   },
 
-  // Sessions
+  // Sessions - Configuration pour Vercel et la production
   session: {
-    cookieName: "better-auth.session_token", // Utiliser le nom par défaut de Better-Auth
+    cookieName: "better-auth.session_token",
     maxAge: 86400 * 30, // 30 jours
     updateAge: 86400, // 1 jour
+    // ⭐ Configuration critique pour Vercel ⭐
     cookieOptions: {
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      domain: process.env.NODE_ENV === "production" ? ".garde-manger.app" : undefined,
+      secure: true, // TOUJOURS true pour Vercel (HTTPS obligatoire)
+      // Déterminer le domaine dynamiquement
+      domain: process.env.NEXT_VERCEL_URL
+        ? new URL(process.env.NEXT_VERCEL_URL).hostname
+        : undefined,
     },
   },
 
   // Plugins pour Next.js - Essentiel pour gérer les cookies
   plugins: [nextCookies()],
   
-  // Configuration pour Next.js
+  // Configuration pour Next.js et Better-Auth
   framework: {
     nextjs: {
-      // Utiliser l'URL dynamique plutôt que statique
-      basePath: process.env.BASE_PATH,
+      basePath: "/api/auth",
     },
   },
+  // ⭐ Configuration supplémentaire pour Vercel ⭐
+  // URL de base pour les requêtes API (obligatoire en production)
+  url: process.env.NEXT_BETTER_AUTH_URL || process.env.NEXT_VERCEL_URL,
+  cookiePrefix: "__Secure-", // Préfixe pour les cookies sécurisés en HTTPS
 });
 
 // Types pour les sessions
