@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { InstallationRole } from "@/lib/types";
-import { Home, Plus, Package, Users } from "lucide-react";
+import { Home, Plus, Package, Users, LogOut } from "lucide-react";
+import { signout } from "@/lib/actions/signActions";
 import styles from "./Installations.module.css";
 
 // Type pour les installations
@@ -57,10 +58,18 @@ export default function InstallationsClient({ installations }: InstallationsClie
     <main className={styles.container}>
       <div className={styles.header}>
         <h1>Mes Installations</h1>
-        <Link href="/installations/new" className={`${styles.btn} ${styles.btnPrimary}`}>
-          <Plus size={20} />
-          Nouvelle Installation
-        </Link>
+        <div className={styles.headerActions}>
+          <Link href="/installations/new" className={`${styles.btn} ${styles.btnPrimary}`}>
+            <Plus size={20} />
+            Nouvelle Installation
+          </Link>
+          <form action={signout}>
+            <button type="submit" className={`${styles.btn} ${styles.btnSecondary}`}>
+              <LogOut size={20} />
+              Déconnexion
+            </button>
+          </form>
+        </div>
       </div>
 
       {installations.length === 0 ? (
