@@ -59,6 +59,10 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     torchOn: false,
   });
 
+  // État pour les caméras disponibles
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+
   // Références
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -133,13 +137,22 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       let mediaStream: MediaStream | undefined;
       
       try {
-        // Essayer avec les contraintes de base
+        // Utiliser deviceId si disponible, sinon facingMode
+        const videoConstraints: MediaTrackConstraints = {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        };
+
+        // Ajouter deviceId si on a au moins une caméra disponible
+        if (currentDeviceId) {
+          videoConstraints.deviceId = { exact: currentDeviceId };
+        } else if (!isMobileSafari) {
+          // Fallback vers facingMode si pas de deviceId (et pas Safari)
+          videoConstraints.facingMode = scannerConfig.facingMode;
+        }
+
         mediaStream = await getUserMedia.call(navigator.mediaDevices || navigator, {
-          video: {
-            ...(isMobileSafari ? {} : { facingMode: scannerConfig.facingMode }), // Désactive facingMode pour Safari
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          video: videoConstraints,
         });
       } catch (mediaError) {
         const errorMessage = mediaError instanceof Error ? mediaError.message : String(mediaError);
@@ -155,10 +168,19 @@ export default function ScanClient({ installationId, installationName }: ScanCli
         
         // Sinon, réessayer avec des contraintes minimalistes
         try {
+          const fallbackConstraints: MediaTrackConstraints = {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          };
+
+          if (currentDeviceId) {
+            fallbackConstraints.deviceId = { exact: currentDeviceId };
+          } else if (!isMobileSafari) {
+            fallbackConstraints.facingMode = scannerConfig.facingMode;
+          }
+
           mediaStream = await getUserMedia.call(navigator.mediaDevices || navigator, {
-            video: {
-              facingMode: scannerConfig.facingMode,
-            },
+            video: fallbackConstraints,
           });
         } catch (secondError) {
           // Si ça échoue une deuxième fois, c'est que la caméra n'est pas disponible
@@ -297,14 +319,31 @@ export default function ScanClient({ installationId, installationName }: ScanCli
   }, [startScanner]);
 
   // Basculer la caméra
-  const toggleCamera = useCallback(() => {
+  const toggleCamera = useCallback(async () => {
+    if (availableCameras.length <= 1) return; // Pas de basculement possible
+    
     stopScanner();
-    setScannerConfig(prev => ({
-      ...prev,
-      facingMode: prev.facingMode === 'environment' ? 'user' : 'environment',
-    }));
+    
+    // Trouver la prochaine caméra à utiliser
+    const currentIndex = availableCameras.findIndex(c => c.deviceId === currentDeviceId);
+    const nextIndex = (currentIndex + 1) % availableCameras.length;
+    const nextCamera = availableCameras[nextIndex];
+    
+    if (nextCamera) {
+      setCurrentDeviceId(nextCamera.deviceId);
+      
+      // Mettre à jour le facingMode basées sur la nouvelle caméra
+      // Note: facingMode peut être undefined, donc on utilise une valeur par défaut
+      const newFacingMode = (nextCamera as { facingMode?: 'user' | 'environment' }).facingMode === 'environment' ? 'environment' : 'user';
+      setScannerConfig(prev => ({
+        ...prev,
+        facingMode: newFacingMode,
+      }));
+    }
+    
+    // Redémarrer le scanner avec la nouvelle caméra
     setTimeout(startScanner, 200);
-  }, [stopScanner, startScanner]);
+  }, [stopScanner, startScanner, availableCameras, currentDeviceId]);
 
   // Basculer la lampe torche
   const toggleTorch = useCallback(() => {
@@ -337,10 +376,35 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     return messages[type] || defaultMessage;
   };
 
-  // Initialiser le reader
+  // Initialiser le reader et lister les caméras disponibles
   useEffect(() => {
     codeReaderRef.current = new BrowserMultiFormatReader();
     codeReaderRef.current.possibleFormats = SUPPORTED_FORMATS;
+
+    // Lister les caméras disponibles au chargement
+    const listCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter((device) => device.kind === "videoinput");
+        setAvailableCameras(videoDevices);
+        
+        // Trouver la caméra arrière par défaut
+        const defaultCamera = videoDevices.find(device => 
+          device.label?.toLowerCase().includes("back") || 
+          device.label?.toLowerCase().includes("arrière") ||
+          (device as { facingMode?: 'user' | 'environment' }).facingMode === "environment"
+        ) || videoDevices[0];
+        
+        if (defaultCamera) {
+          setCurrentDeviceId(defaultCamera.deviceId);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des caméras:", error);
+      }
+    };
+
+    listCameras();
+
     return () => {
       cleanupScanner();
     };
