@@ -22,6 +22,13 @@ export default function proxy(request: NextRequest) {
     'camera=*, microphone=*, geolocation=*, fullscreen=*'
   );
 
+  // Configurer les headers CORS pour Vercel
+  // Nécessaire pour éviter les erreurs "Fetch API cannot load... due to access control checks"
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
+
   // Configurer le Content-Security-Policy pour plus de sécurité
   // Permet l'accès à la caméra et le chargement des ressources nécessaires
   response.headers.set(
