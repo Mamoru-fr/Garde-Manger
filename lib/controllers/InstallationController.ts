@@ -17,6 +17,7 @@ import {
   addUserToInstallationService,
   removeUserFromInstallationService,
   checkInstallationAccessService,
+  getInstallationObjectsService, // ✅ Ajout de la nouvelle fonction
 } from "@/lib/services/InstallationService";
 import { eq } from "drizzle-orm";
 
@@ -185,6 +186,40 @@ export class InstallationController {
         objectCount: number;
       };
     }>;
+  }
+
+  // Obtenir les objets d'une installation avec leurs métadonnées
+  static async getInstallationObjects(
+    installationId: string
+  ): Promise<ActionResponse<{
+    objects: Array<{
+      id: string;
+      objectDirectoryId: string;
+      name: string;
+      brand?: string | null;
+      category?: string | null;
+      description?: string | null;
+      nutriscore?: string | null;
+      imageUrl?: string | null;
+      quantity: number;
+      location?: string | null;
+      expiryDate?: Date | null;
+      openFoodFactsId?: string | null;
+      isReadOnly?: boolean;
+    }>;
+  }>> {
+    // Vérification de l'installation
+    if (!installationId || installationId.trim() === "") {
+      return {
+        success: false,
+        error: "ID installation requis",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Appel au service
+    const result = await getInstallationObjectsService(installationId);
+    return result;
   }
 
   // Mettre à jour une installation

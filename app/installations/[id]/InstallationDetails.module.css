@@ -213,12 +213,14 @@
   justify-content: space-between; /* ✅ Titre à gauche, boutons à droite */
   gap: 1rem;
   margin-bottom: 1rem;
+  width: 100%; /* ✅ Prend toute la largeur pour éviter le débordement */
 }
 
 .objectsActions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  width: auto; /* ✅ Largeur auto pour s'adapter au contenu */
 }
 
 .emptyState {
@@ -521,4 +523,33 @@
 
 .tableContainer::-webkit-scrollbar-thumb:hover {
   background: #8b4513;
+}
+
+/* ========== Styles pour les objets dans le tableau ========== */
+.objectNameWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.objectBrand {
+  color: #6b5b47;
+  font-size: 0.8rem;
+}
+
+.readOnlyToken {
+  font-size: 0.8rem;
+  color: #8b4513;
+  cursor: help;
+}
+
+.actionButton {
+  color: #8b4513;
+  text-decoration: none;
+  padding: 0.25rem;
+}
+
+.actionButton:hover {
+  color: #6a350f;
 }

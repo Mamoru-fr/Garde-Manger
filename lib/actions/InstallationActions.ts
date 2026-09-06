@@ -138,6 +138,68 @@ export async function getInstallationById(
   return result;
 }
 
+// Action pour récupérer les objets d'une installation
+// Retourne la liste des objets avec leurs métadonnées (nom, marque, etc.)
+export async function getInstallationObjects(
+  installationId: string
+): Promise<ActionResponse<{
+  objects: Array<{
+    id: string;
+    objectDirectoryId: string;
+    name: string;
+    brand?: string | null;
+    category?: string | null;
+    description?: string | null;
+    nutriscore?: string | null;
+    imageUrl?: string | null;
+    quantity: number;
+    location?: string | null;
+    expiryDate?: Date | null;
+    openFoodFactsId?: string | null;
+    isReadOnly?: boolean;
+  }>;
+}>> {
+  try {
+    // Vérifier la session utilisateur
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Tu dois être connecté pour voir les objets de cette installation",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await checkInstallationAccess(installationId);
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé à cette installation",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // Récupérer les objets de l'installation avec les métadonnées de l'annuaire
+    const result = await InstallationController.getInstallationObjects(installationId);
+
+    if (!result.success) {
+      return result;
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[InstallationActions] Erreur dans getInstallationObjects:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération des objets",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
 // Action pour mettre à jour une installation
 export async function updateInstallation(
   prevState: ActionResponse<{ installationId: string }> | null,

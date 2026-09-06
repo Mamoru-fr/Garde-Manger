@@ -27,12 +27,30 @@ interface Installation {
   objectCount: number;
 }
 
+// Types pour les objets
+interface InstallationObject {
+  id: string;
+  objectDirectoryId: string;
+  name: string;
+  brand?: string | null;
+  category?: string | null;
+  description?: string | null;
+  nutriscore?: string | null;
+  imageUrl?: string | null;
+  quantity: number;
+  location?: string | null;
+  expiryDate?: Date | null;
+  openFoodFactsId?: string | null;
+  isReadOnly?: boolean;
+}
+
 // Types pour les fonctions utilitaires
 interface InstallationDetailsClientProps {
   installation: Installation;
   userRole: InstallationRole;
   sessionUserId: string;
   installationId: string;
+  objects: InstallationObject[]; // ✅ Nouveauté : liste des objets
 }
 
 // Fonctions utilitaires (reproduites côté client)
@@ -78,10 +96,10 @@ export default function InstallationDetailsClient({
   userRole,
   sessionUserId,
   installationId,
+  objects, // ✅ Récupéré depuis le Server Component
 }: InstallationDetailsClientProps) {
   const router = useRouter();
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
-  const objects = []; // À remplacer par les vrais objets quand on aura le service
 
   return (
     <>
@@ -108,6 +126,16 @@ export default function InstallationDetailsClient({
             </div>
             
             <div className={styles.headerActions}>
+              {/* ✅ Bouton Rafraîchir DEPLACÉ ICI (toujours visible en haut) */}
+              <button
+                onClick={() => router.refresh()}
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                title="Rafraîchir la liste des objets et l'installation"
+              >
+                <RefreshCw size={16} />
+                Rafraîchir
+              </button>
+              
               {userRole !== "viewer" && (
                 <Link
                   href={`/installations/${installationId}/edit`}
@@ -224,32 +252,22 @@ export default function InstallationDetailsClient({
           <div className={styles.objectsHeader}>
             <h2 className={styles.sectionTitle}>Objets dans cette installation</h2>
             <div className={styles.objectsActions}>
-              {/* Bouton Rafraîchir (pour tous les rôles) */}
-              <button
-                onClick={() => router.refresh()}
-                className={`${styles.btn} ${styles.btnSecondary}`}
-                title="Rafraîchir la liste des objets"
-              >
-                <RefreshCw size={16} />
-                Rafraîchir
-              </button>
-              
               {userRole !== "viewer" && (
-                <Link
-                  href={`/installations/${installationId}/objects/add`}
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                >
-                  <Plus size={16} />
-                  Ajouter un objet
-                </Link>
-              )}
-              {userRole !== "viewer" && (
-                <Link
-                  href={`/installations/${installationId}/objects/scan`}
-                  className={`${styles.btn} ${styles.btnSecondary}`}
-                >
-                  Scanner un code-barres
-                </Link>
+                <>
+                  <Link
+                    href={`/installations/${installationId}/objects/add`}
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                  >
+                    <Plus size={16} />
+                    Ajouter un objet
+                  </Link>
+                  <Link
+                    href={`/installations/${installationId}/objects/scan`}
+                    className={`${styles.btn} ${styles.btnSecondary}`}
+                  >
+                    Scanner un code-barres
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -266,16 +284,54 @@ export default function InstallationDetailsClient({
               </tr>
             </thead>
             <tbody>
-              {/* Here we would display the actual objects */}
-              {objects.length === 0 && (
+              {objects.length === 0 ? (
                 <tr>
                   <td colSpan={5} className={styles.emptyState}>
                     {installation?.objectCount === 0
                       ? "Aucun objet dans cette installation"
-                      : "Chargement des objets..."
+                      : "Aucun objet trouvé"
                     }
                   </td>
                 </tr>
+              ) : (
+                // ✅ Afficher chaque objet dans une ligne du tableau
+                objects.map((obj) => (
+                  <tr key={obj.id}>
+                    <td>
+                      <div className={styles.objectNameWrapper}>
+                        {obj.name}
+                        {obj.brand && (
+                          <span className={styles.objectBrand}> ({obj.brand})</span>
+                        )}
+                        {obj.isReadOnly && (
+                          <span className={styles.readOnlyToken} title="Données verrouillées (OpenFoodFacts)">
+                            🔒
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>{obj.quantity}</td>
+                    <td>{obj.location || "-"}</td>
+                    <td>
+                      {obj.expiryDate
+                        ? formatDate(obj.expiryDate)
+                        : "-"
+                      }
+                    </td>
+                    <td className={styles.tableActions}>
+                      {/* Actions pour chaque objet (À implémenter plus tard) */}
+                      {userRole !== "viewer" && (
+                        <Link
+                          href={`/installations/${installationId}/objects/${obj.objectDirectoryId}/edit`}
+                          className={styles.actionButton}
+                          title="Modifier"
+                        >
+                          ✏️
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

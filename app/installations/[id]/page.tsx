@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { getInstallationById, checkInstallationAccess } from "@/lib/actions/InstallationActions";
+import { getInstallationById, getInstallationObjects, checkInstallationAccess } from "@/lib/actions/InstallationActions";
 import { InstallationRole } from "@/lib/types";
 import InstallationDetailsClient from "./InstallationDetailsClient";
 
@@ -36,6 +36,10 @@ export default async function InstallationDetailsPage({
     redirect("/installations?error=not_found");
   }
 
+  // ✅ Récupérer les objets de l'installation
+  const objectsResult = await getInstallationObjects(id);
+  const objects = objectsResult.success ? objectsResult.data?.objects || [] : [];
+
   const installation = installationResult.data.installation;
   const userRole = installation.userRole as InstallationRole;
 
@@ -46,6 +50,7 @@ export default async function InstallationDetailsPage({
       userRole={userRole}
       sessionUserId={session.user.id}
       installationId={id}
+      objects={objects} // ✅ Passer les objets réels
     />
   );
 }
