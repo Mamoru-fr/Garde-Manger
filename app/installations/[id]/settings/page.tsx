@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import { getInstallationById, checkInstallationAccess } from "@/lib/actions/InstallationActions";
+import { InstallationRole } from "@/lib/types";
+import EditInstallationForm from "@/components/installations/EditInstallationForm";
 import Link from "next/link";
 
 export default async function InstallationSettingsPage({
@@ -31,37 +33,31 @@ export default async function InstallationSettingsPage({
   }
 
   const installation = installationResult.data.installation;
+  const userRole = installation.userRole as InstallationRole;
 
-  // Page de base avec liens vers les fonctionnalités existantes
+  // Si l'utilisateur n'a pas le droit de modifier, message approprié
+  if (userRole !== 'owner' && userRole !== 'editor') {
+    return (
+      <main className="container">
+        <h1>Paramètres de l'installation: {installation.name}</h1>
+        <p>Tu n'as pas la permission de modifier les paramètres de cette installation.</p>
+        <Link href={`/installations/${id}`} className="btn btnSecondary">
+          Retour aux détails
+        </Link>
+      </main>
+    );
+  }
+
   return (
     <main className="container">
       <h1>Paramètres de l'installation: {installation.name}</h1>
-      <p className="subtitle">Gérez les paramètres de votre installation.</p>
+      <p className="subtitle">Modifie les informations de base de ton installation.</p>
       
-      <div style={{ marginTop: '2rem' }}>
-        <h2>Paramètres disponibles:</h2>
-        <ul>
-          <li>
-            <Link href={`/installations/${id}/edit`}>
-              Modifier les informations de l'installation
-            </Link>
-          </li>
-          <li>
-            <Link href={`/installations/${id}`}>
-              Voir les détails de l'installation
-            </Link>
-          </li>
-          <li>
-            <Link href={`/installations/${id}/objects/scan`}>
-              Scanner un code-barres
-            </Link>
-          </li>
-        </ul>
-      </div>
+      <EditInstallationForm installation={installation} />
       
-      <div style={{ marginTop: '2rem' }}>
-        <Link href="/installations" className="back-link">
-          Retour à la liste des installations
+      <div className="mt-6">
+        <Link href={`/installations/${id}`} className="btn btnSecondary">
+          Retour aux détails
         </Link>
       </div>
     </main>
