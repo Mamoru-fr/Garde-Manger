@@ -2,8 +2,8 @@
 const nextConfig = {
   experimental: {
     // Pour Next.js 16 avec Turbopack
-    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
   },
+  serverExternalPackages: ['@prisma/client', 'bcrypt'],
   // Configuration des headers pour Vercel
   headers: async () => {
     return [
