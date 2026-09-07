@@ -50,7 +50,7 @@ export class AuthController {
     console.log("🟡 [CONTROLLER] Début de AuthController.signin()");
     console.log("🟡 [CONTROLLER] Data:", { email: data.email, password: "***" });
     
-    // Validation supplémentaire
+    // Validation supplémentaire (défense en profondeur)
     if (!data.email || data.email.length > 255) {
       console.log("❌ [CONTROLLER] Email invalide");
       return {

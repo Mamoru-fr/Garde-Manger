@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getCurrentSession } from "@/lib/utils/auth";
 import { getUserInstallations } from "@/lib/actions/InstallationActions";
 import InstallationsClient from "./InstallationsClient";
+import { getCurrentSession } from "@/lib/utils/auth";
 
-// Page dinstallations - Server Component avec vérification de session
+// Page installations - Server Component avec vérification de session
 // ⭐ FORCER LE RENDU DYNAMIQUE car on utilise headers() pour la session ⭐
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +32,17 @@ export default async function InstallationsPage() {
       role: inst.role as "owner" | "editor" | "viewer"
     })) || [] : [];
 
-  // Afficher la page avec les installations
+  // Afficher la page avec les installations et la session
+  // Adapter la session au format attendu par InstallationsClient
+  const adaptedSession = {
+    user: session?.user ? {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    } : null,
+  };
+
   return (
-    <InstallationsClient installations={installations} session={session} />
+    <InstallationsClient installations={installations} session={adaptedSession} />
   );
 }

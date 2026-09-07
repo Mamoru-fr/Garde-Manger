@@ -80,7 +80,7 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
   
   try {
     console.log("🟠 [SERVICE] Appel de auth.api.signInEmail()");
-    // Connexion via Better-Auth - Il faut passer les headers pour que nextCookies() fonctionne
+    // ✅ 1. Appel à Better-Auth pour la connexion
     const response = await auth.api.signInEmail({
       body: {
         email: input.email,
@@ -106,31 +106,27 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       };
     }
 
-    console.log("🟠 [SERVICE] Connexion réussie");
+    console.log("🟠 [SERVICE] Connexion réussie, vérification de la session...");
     
-    // Après la connexion réussie, on doit récupérer l'utilisateur depuis la DB
-    // car auth.api.getSession() peut ne pas être disponible immédiatement
-    const userResult = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, input.email))
-      .limit(1);
+    // ✅ 2. Vérifier que Better-Auth a bien créé la session
+    const session = await auth.api.getSession({ headers: await getAuthHeaders() });
     
-    if (!userResult.length) {
-      console.log("❌ [SERVICE] Utilisateur non trouvé dans la DB après connexion");
+    if (!session?.user) {
+      console.log("❌ [SERVICE] Session non créée par Better-Auth");
       return {
         success: false,
-        error: "Utilisateur non trouvé",
-        code: ErrorCodes.USER_NOT_FOUND,
+        error: "Session non créée",
+        code: ErrorCodes.INTERNAL_ERROR,
       };
     }
-    
-    const user = userResult[0];
-    console.log("🟠 [SERVICE] Utilisateur trouvé:", { id: user.id, email: user.email });
 
+    console.log("🟠 [SERVICE] Session vérifiée, utilisateur trouvé:", { id: session.user.id, email: session.user.email });
+    
+    // ✅ 3. Récupérer l'userId depuis la session Better-Auth
+    // (plus besoin de requête DB supplémentaire)
     return {
       success: true,
-      data: { userId: user.id },
+      data: { userId: session.user.id },
     };
   } catch (error) {
     console.error("[AuthService] Erreur lors de la connexion:", error);
@@ -138,7 +134,7 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       success: false,
       error: "Une erreur est survenue lors de la connexion",
       code: ErrorCodes.INTERNAL_ERROR,
-      details: error,
+      details: error instanceof Error ? error.message : error,
     };
   }
 }
