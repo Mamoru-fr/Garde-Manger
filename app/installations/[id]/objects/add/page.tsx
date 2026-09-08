@@ -7,7 +7,7 @@ import AddObjectClient from "./AddObjectClient";
 import { redirect } from "next/navigation";
 
 export default async function AddObjectPage({ params }: { params: { id: string } }) {
-  // R\u001ecup\u001erer la session
+  // Recuperer la session
   const headers = await getAuthHeaders();
   const session = await auth.api.getSession({ headers });
   
@@ -15,15 +15,23 @@ export default async function AddObjectPage({ params }: { params: { id: string }
     redirect("/login");
   }
 
-  // R\u001ecup\u001erer l'installation pour le titre
+  // Recuperer l'installation pour le titre
   const installationResult = await getInstallationById(params.id);
-  if (!installationResult.success || !installationResult.data?.installation) {
-    throw new Error("Installation non trouv\u001ee");
+  
+  // Verifier la structure de la reponse
+  if (!installationResult?.success) {
+    console.error("Erreur lors de la recuperation de l'installation:", installationResult?.error);
+    throw new Error("Installation non trouvee : " + (installationResult?.error || "ID invalide"));
   }
   
-  const installation = installationResult.data.installation;
+  const installation = installationResult.data?.installation;
+  
+  if (!installation) {
+    console.error("Installation introuvable dans la reponse:", installationResult);
+    throw new Error("Installation non trouvee : donnees manquantes");
+  }
 
-  // Charger les cat\u001egories et magasins pour les selects
+  // Charger les categories et magasins pour les selects
   const [categories, shops] = await Promise.all([
     getCategories(),
     getShops(),
