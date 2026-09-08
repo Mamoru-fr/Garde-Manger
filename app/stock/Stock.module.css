@@ -250,10 +250,10 @@
     margin-top: 1rem;
   }
 }
-
+/* 
 @media (min-width: 1400px) {
   .pageContainer {
     padding-left: calc((100vw - 1400px) / 2);
     padding-right: calc((100vw - 1400px) / 2);
   }
-}
+} */
