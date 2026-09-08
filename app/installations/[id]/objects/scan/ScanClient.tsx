@@ -221,19 +221,36 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       console.log('[CAMERA DEBUG] mediaStream:', mediaStream);
       streamRef.current = mediaStream;
 
-      // Assigner le stream à la vidéo
-      if (videoRef.current) {
-        console.log('[CAMERA DEBUG] Assignation du stream à la vidéo');
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play().catch(e => {
-          console.error("[CAMERA DEBUG] Erreur lecture vidéo:", e);
-        });
-      }
-
       // Initialiser le codeReader si ce n'est pas déjà fait
       if (!codeReaderRef.current) {
         codeReaderRef.current = new BrowserMultiFormatReader();
         codeReaderRef.current.possibleFormats = SUPPORTED_FORMATS;
+      }
+
+      // Assigner le stream à la vidéo
+      if (videoRef.current) {
+        console.log('[CAMERA DEBUG] Assignation du stream à la vidéo');
+        videoRef.current.srcObject = mediaStream;
+        
+        // Attendre que la vidéo soit prête avant de scanner
+        const playPromise = videoRef.current.play().catch(e => {
+          console.error("[CAMERA DEBUG] Erreur lecture vidéo:", e);
+          throw e;
+        });
+        
+        // Attendre que la vidéo soit en train de jouer
+        await playPromise;
+        
+        // Vérifier que la vidéo a bien des dimensions > 0
+        if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+          console.error('[CAMERA DEBUG] vidéo a des dimensions nulles:', { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+          throw new Error("Le flux vidéo n'a pas de dimensions valides. Vérifiez les permissions de la caméra.");
+        }
+        
+        console.log('[CAMERA DEBUG] Vidéo prête, dimensions:', { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+      } else {
+        console.error('[CAMERA DEBUG] videoRef.current est null');
+        throw new Error("L'élément vidéo n'est pas disponible.");
       }
 
       // Démarrer la détection avec la méthode scan
@@ -241,20 +258,30 @@ export default function ScanClient({ installationId, installationName }: ScanCli
         console.log('[CAMERA DEBUG] Démarrage du scanner...');
         setScannedBarcode(null);
         
-        scannerControlsRef.current = codeReaderRef.current.scan(
-          videoRef.current,
-          (result, err) => {
-            if (result && result.getText() !== scannedBarcode) {
-              const barcodeText = result.getText();
-              console.log(`[CAMERA DEBUG] Code détecté: ${barcodeText}`);
-              stopScanner();
-              handleScanComplete(barcodeText);
-            }
-            if (err) {
-              console.error("[CAMERA DEBUG] Erreur de décodage:", err);
-            }
+        // Utiliser une référence locale pour éviter les closures
+        const scanCallback = (result: any, err: any) => {
+          if (result) {
+            const barcodeText = result.getText();
+            console.log(`[CAMERA DEBUG] Code détecté: ${barcodeText}`);
+            stopScanner();
+            handleScanComplete(barcodeText);
           }
-        );
+          if (err) {
+            console.error("[CAMERA DEBUG] Erreur de décodage:", err);
+          }
+        };
+        
+        // Démarrer le scan
+        try {
+          scannerControlsRef.current = codeReaderRef.current.scan(
+            videoRef.current,
+            scanCallback
+          );
+          console.log('[CAMERA DEBUG] Scanner démarré avec succès');
+        } catch (scanError) {
+          console.error('[CAMERA DEBUG] Erreur au démarrage du scanner:', scanError);
+          throw scanError;
+        }
       }
 
     } catch (err) {
