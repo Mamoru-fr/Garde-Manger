@@ -256,7 +256,7 @@ export default function StockClient({
       </div>
 
       {/* Filtres */}
-      <div className={styles.filtersContainer}>
+      <div>
         <StockFiltersComponent
           initialFilters={filters}
           onFilterChange={handleFilterChange}
