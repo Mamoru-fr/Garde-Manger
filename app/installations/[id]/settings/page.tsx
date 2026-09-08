@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { getInstallationById, checkInstallationAccess, updateInstallation } from "@/lib/actions/InstallationActions";
+import { getInstallationById, checkInstallationAccess } from "@/lib/actions/InstallationActions";
 import { InstallationRole } from "@/lib/types";
+import EditInstallationForm from "@/components/installations/EditInstallationForm";
 import Link from "next/link";
 
 export default async function InstallationSettingsPage({
@@ -47,6 +48,15 @@ export default async function InstallationSettingsPage({
     );
   }
 
-  // Rediriger vers la page d'édition qui a déjà le formulaire
-  redirect(`/installations/${id}/edit`);
+  return (
+    <main>
+      <nav style={{ marginBottom: '1rem' }}>
+        <Link href={`/installations/${id}`} className="btn btnSecondary">
+          ← Retour à {installation.name}
+        </Link>
+      </nav>
+      
+      <EditInstallationForm installation={installation} />
+    </main>
+  );
 }
