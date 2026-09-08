@@ -594,31 +594,6 @@ export default function ScanClient({ installationId, installationName }: ScanCli
                   Pointez votre camera vers un code-barres ou QR code
                 </p>
               </div>
-              
-              <div className={styles.scannerControls}>
-                <button
-                  onClick={toggleCamera}
-                  className={styles.controlButton}
-                  title={`Basculer vers caméra ${scannerConfig.facingMode === 'environment' ? 'avant' : 'arrière'}`}
-                  disabled={availableCameras.length === 0 && !isMobileSafari}
-                >
-                  {scannerConfig.facingMode === 'environment' ? <Camera size={20} /> : <Camera size={20} style={{ transform: 'scaleX(-1)' }} />}
-                  <span className={styles.cameraLabel}>
-                    {scannerConfig.facingMode === 'environment' ? 'Arrière' : 'Avant'}
-                  </span>
-                </button>
-                
-                {scannerConfig.facingMode === 'environment' && (
-                  <button
-                    onClick={toggleTorch}
-                    className={`${styles.controlButton} ${scannerConfig.torchOn ? styles.controlButtonActive : ''}`}
-                    title={scannerConfig.torchOn ? "Éteindre la lampe" : "Allumer la lampe"}
-                    disabled={!streamRef.current || scanStatus !== 'scanning'}
-                  >
-                    {scannerConfig.torchOn ? <Eye size={20} /> : <EyeOff size={20} />}
-                  </button>
-                )}
-              </div>
             </div>
           )}
 
