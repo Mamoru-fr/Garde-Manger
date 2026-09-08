@@ -251,7 +251,7 @@ export default function StockClient({
       </header>
 
       {/* Statistiques */}
-      <div>
+      <div style={{ padding: "0 2rem" }}>
         {stats && <StockStatsComponent stats={stats} />}
       </div>
 
