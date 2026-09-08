@@ -120,18 +120,6 @@
 }
 
 /* ============================================
-   STATISTIQUES
-   ============================================ */
-
-.statsContainer {
-  max-width: 1400px;
-  margin: -1rem auto 0;
-  padding: 0 2rem;
-  position: relative;
-  z-index: 2;
-}
-
-/* ============================================
    FILTRES
    ============================================ */
 
@@ -233,10 +221,6 @@
 
   .filtersContainer {
     padding: 0.75rem;
-  }
-
-  .statsContainer {
-    padding: 0 0.75rem;
   }
 
   .mainContent {
