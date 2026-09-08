@@ -393,15 +393,14 @@ export default function ScanDetailsForm({
                 </label>
                 <div className={styles.priceInputWrapper}>
                   <input
-                    type="number"
+                    type="text"
                     id="price"
                     name="price"
                     value={formData.price}
                     onChange={handleChange}
-                    min="0"
-                    step="0.01"
+                    inputMode="decimal"
                     className={styles.formInput}
-                    placeholder="Ex: 2.99"
+                    placeholder="Ex: 2,99"
                   />
                   {displayPrice && (
                     <span className={styles.priceDisplay}>{displayPrice} €</span>
