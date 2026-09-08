@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { getInstallationById, checkInstallationAccess, deleteInstallation } from "@/lib/actions/InstallationActions";
+import { getInstallationById, checkInstallationAccess } from "@/lib/actions/InstallationActions";
 import { InstallationRole } from "@/lib/types";
 import Link from "next/link";
-import { ArrowLeft, Trash2, AlertTriangle, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Settings as SettingsIcon } from "lucide-react";
+import DeleteInstallationButton from "@/components/installations/DeleteInstallationButton";
 
 export default async function InstallationSettingsPage({
   params,
@@ -157,22 +158,10 @@ export default async function InstallationSettingsPage({
                 </p>
               </div>
               
-              <form action={async (formData: FormData) => {
-                await deleteInstallation(null, formData);
-              }}>
-                <button 
-                  type="submit" 
-                  className="btn btnDanger"
-                  onClick={(e: any) => {
-                    if (!confirm(`Voulez-vous vraiment supprimer l'installation "${installation.name}" ? Cette action est irreversible.`)) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  <Trash2 size={16} />
-                  Supprimer
-                </button>
-              </form>
+              <DeleteInstallationButton 
+                installationId={installation.id}
+                installationName={installation.name}
+              />
             </div>
           </div>
         </section>
