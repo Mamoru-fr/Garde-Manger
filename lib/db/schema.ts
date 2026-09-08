@@ -67,59 +67,101 @@ export const unitEnum = pgEnum("unit", [
 // ============================================================================
 
 // Table des utilisateurs (Better-Auth)
-export const users = pgTable("users", {
+// Note: Better-Auth s'attend à ce que la table s'appelle "user" (singulier)
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false),
-  name: text("name"),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  name: text("name").notNull(),
   image: text("image"),
   role: userRoleEnum("role").default("user"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 }, (table) => {
   // Index sur l'email pour les recherches rapides
-  return [index("users_email_idx").on(table.email)];
+  return [index("user_email_idx").on(table.email)];
 });
+
+// Alias pour la rétrocompatibilité avec le reste du code
+// @deprecated Utiliser `user` à la place
+export const users = user;
 
 // Table des sessions (Better-Auth)
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at").notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("session_userId_idx").on(table.userId)],
+);
+
+// Alias pour la rétrocompatibilité
+// @deprecated Utiliser `session` à la place
+export const sessions = session;
 
 // Table des accounts (Better-Auth - pour les connexions sociales)
-export const accounts = pgTable("accounts", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("account_userId_idx").on(table.userId)],
+);
+
+// Alias pour la rétrocompatibilité
+// @deprecated Utiliser `account` à la place
+export const accounts = account;
 
 // Table des tokens de vérification (Better-Auth)
-export const verifications = pgTable("verifications", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+// Alias pour la rétrocompatibilité
+// @deprecated Utiliser `verification` à la place
+export const verifications = verification;
 
 // ============================================================================
 // TABLES MÉTIERS (avec index intégrés)
@@ -132,7 +174,7 @@ export const installations = pgTable("installations", {
   description: text("description"),
   ownerId: text("owner_id")
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => {
@@ -146,7 +188,7 @@ export const userInstallations = pgTable(
   {
     userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "cascade" }),
     installationId: text("installation_id")
       .notNull()
       .references(() => installations.id, { onDelete: "cascade" }),
@@ -226,7 +268,9 @@ export const objectDirectory = pgTable("object_directory", {
   nutriscore: text("nutriscore"),  // Ex: "A", "B", "C", "D", "E"
   brand: text("brand"),  // Marque (ex: "Chiquita", "Carrefour")
   openFoodFactsId: text("open_food_facts_id"),  // ID pour l'API OpenFoodFacts
+  imageUrl: text("image_url"),  // URL de l'image du produit
   defaultQuantity: integer("default_quantity").default(1),
+  isReadOnly: boolean("is_read_only").default(false),  // ✅ Verrouillage pour les objets OpenFoodFacts
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => {
@@ -273,7 +317,7 @@ export const objectInstallation = pgTable("object_installation", {
   note: text("note"),  // Notes personnelles (ex: "À consommer rapidement")
   addedDate: timestamp("added_date").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-  createdBy: text("created_by").references(() => users.id, {
+  createdBy: text("created_by").references(() => user.id, {
     onDelete: "set null",
   }),
 }, (table) => {
@@ -296,7 +340,7 @@ export const objectHistory = pgTable("object_history", {
   oldQuantity: integer("old_quantity"),
   newQuantity: integer("new_quantity"),
   action: text("action").notNull(),
-  userId: text("user_id").references(() => users.id, {
+  userId: text("user_id").references(() => user.id, {
     onDelete: "set null",
   }),
   timestamp: timestamp("timestamp").defaultNow(),
@@ -306,50 +350,62 @@ export const objectHistory = pgTable("object_history", {
 // RELATIONS (pour Drizzle)
 // ============================================================================
 
-// Utilisateurs
-export const usersRelations = relations(users, ({ many, one }) => ({
-  sessions: many(sessions),
-  accounts: many(accounts),
+// Utilisateurs (avec alias pour rétrocompatibilité)
+export const userRelations = relations(user, ({ many, one }) => ({
+  sessions: many(session),
+  accounts: many(account),
   installations: many(installations),
   userInstallations: many(userInstallations),
   objectInstallations: many(objectInstallation),
   objectHistory: many(objectHistory),
 }));
 
+// Alias pour rétrocompatibilité
+export const usersRelations = userRelations;
+
 // Sessions
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, {
-    fields: [sessions.userId],
-    references: [users.id],
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
   }),
 }));
+
+// Alias pour rétrocompatibilité
+export const sessionsRelations = sessionRelations;
 
 // Accounts
-export const accountsRelations = relations(accounts, ({ one }) => ({
-  user: one(users, {
-    fields: [accounts.userId],
-    references: [users.id],
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, {
+    fields: [account.userId],
+    references: [user.id],
   }),
 }));
 
+// Alias pour rétrocompatibilité
+export const accountsRelations = accountRelations;
+
 // Vérifications
-export const verificationsRelations = relations(
-  verifications,
+export const verificationRelations = relations(
+  verification,
   ({ one }) => ({
-    user: one(users, {
-      fields: [verifications.identifier],
-      references: [users.email],
+    user: one(user, {
+      fields: [verification.identifier],
+      references: [user.email],
     }),
   })
 );
+
+// Alias pour rétrocompatibilité
+export const verificationsRelations = verificationRelations;
 
 // Installations
 export const installationsRelations = relations(
   installations,
   ({ one, many }) => ({
-    owner: one(users, {
+    owner: one(user, {
       fields: [installations.ownerId],
-      references: [users.id],
+      references: [user.id],
     }),
     userInstallations: many(userInstallations),
     objectInstallations: many(objectInstallation),
@@ -360,9 +416,9 @@ export const installationsRelations = relations(
 export const userInstallationsRelations = relations(
   userInstallations,
   ({ one }) => ({
-    user: one(users, {
+    user: one(user, {
       fields: [userInstallations.userId],
-      references: [users.id],
+      references: [user.id],
     }),
     installation: one(installations, {
       fields: [userInstallations.installationId],
@@ -445,9 +501,9 @@ export const objectInstallationRelations = relations(
       fields: [objectInstallation.shopId],
       references: [shops.id],
     }),
-    createdByUser: one(users, {
+    createdByUser: one(user, {
       fields: [objectInstallation.createdBy],
-      references: [users.id],
+      references: [user.id],
     }),
     history: many(objectHistory),
   })
@@ -461,9 +517,9 @@ export const objectHistoryRelations = relations(
       fields: [objectHistory.objectInstallationId],
       references: [objectInstallation.id],
     }),
-    user: one(users, {
+    user: one(user, {
       fields: [objectHistory.userId],
-      references: [users.id],
+      references: [user.id],
     }),
   })
 );

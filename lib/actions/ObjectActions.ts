@@ -984,3 +984,502 @@ export async function listShops(): Promise<ActionResponse<any>> {
     };
   }
 }
+
+// ==========================================================================
+// NOUVELLES ACTIONS SPÉCIFIQUES POUR LE FLUX DE SCAN MODERNE
+// ==========================================================================
+
+import { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
+import { searchProductInDirectory } from "@/lib/services/DirectoryService";
+import { db } from "@/lib/db/drizzle";
+import { objectInstallation, installations, userInstallations, users, objectDirectory, barcodeDirectory } from "@/lib/db/schema";
+import { and, eq, desc, inArray } from "drizzle-orm";
+
+/**
+ * Vérifie si un code-barres existe dans une installation spécifique
+ * et retourne la quantité actuelle
+ */
+export async function checkBarcodeInInstallation(
+  installationId: string,
+  barcode: string
+): Promise<ActionResponse<{ found: boolean; quantity: number; objectId?: string }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé à cette installation",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // Chercher l'objet dans l'installation via le code-barres (jointure nécessaire)
+    const obj = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.installationId, installationId),
+        inArray(objectInstallation.objectDirectoryId, 
+          db.select({ id: barcodeDirectory.objectDirectoryId })
+            .from(barcodeDirectory)
+            .where(eq(barcodeDirectory.barcode, barcode))
+        )
+      ),
+      columns: { id: true, quantity: true },
+      with: {
+        objectDirectory: true,
+      },
+    });
+
+    if (obj) {
+      return {
+        success: true,
+        data: {
+          found: true,
+          quantity: obj.quantity,
+          objectId: obj.id,
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        found: false,
+        quantity: 0,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur checkBarcodeInInstallation:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la vérification du code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * Effectue un scan complet : cherche dans l'annuaire ET dans l'installation
+ * Retourne toutes les infos nécessaires pour les modales
+ */
+export async function performCompleteScan(
+  installationId: string,
+  barcode: string
+): Promise<ActionResponse<{
+  foundInDirectory: boolean;
+  directoryItem?: SimplifiedDirectoryItem | null;
+  foundInInstallation: boolean;
+  currentQuantity: number;
+  objectId?: string;
+}>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé à cette installation",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // 1. Chercher dans l'annuaire
+    const directoryResponse = await searchProductInDirectory(barcode);
+
+    // 2. Chercher dans l'installation
+    const installationCheck = await checkBarcodeInInstallation(installationId, barcode);
+
+    return {
+      success: true,
+      data: {
+        foundInDirectory: directoryResponse.success && !!directoryResponse.data,
+        directoryItem: directoryResponse.success ? directoryResponse.data : null,
+        foundInInstallation: installationCheck.success && installationCheck.data ? installationCheck.data.found : false,
+        currentQuantity: installationCheck.success && installationCheck.data ? installationCheck.data.quantity : 0,
+        objectId: installationCheck.success && installationCheck.data ? installationCheck.data.objectId : undefined,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur performCompleteScan:", error);
+    return {
+      success: false,
+      error: "Erreur lors du scan complet",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * Ajoute un objet scanné à une installation
+ * Crée l'objet dans l'annuaire s'il n'existe pas
+ */
+export async function addScannedObject(
+  installationId: string,
+  barcode: string,
+  quantity: number = 1,
+  additionalData?: {
+    name?: string;
+    category?: string;
+    description?: string;
+    brand?: string;
+    expiryDate?: Date;
+    location?: string;
+  }
+): Promise<ActionResponse<{ objectId: string; createdInDirectory: boolean }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // 1. Chercher dans l'annuaire
+    const directoryResponse = await searchProductInDirectory(barcode);
+
+    let objectDirectoryId: string;
+    let createdInDirectory = false;
+
+    if (directoryResponse.success && directoryResponse.data) {
+      // Objet trouvé dans l'annuaire
+      objectDirectoryId = directoryResponse.data.id;
+      createdInDirectory = false;
+    } else {
+      // Objet non trouvé dans l'annuaire → créer un nouvel objet
+      if (!additionalData?.name) {
+        return {
+          success: false,
+          error: "Le nom de l'objet est requis car il n'a pas été trouvé dans l'annuaire",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      // Créer un nouvel objet dans l'annuaire
+      const createResult = await ObjectController.createObjectDirectory(
+        {
+          name: additionalData.name,
+          description: additionalData.description,
+        },
+        session.user.id
+      );
+
+      if (!createResult.success) {
+        return createResult as ActionResponse<{ objectId: string; createdInDirectory: boolean }>;
+      }
+
+      objectDirectoryId = createResult.data!.objectId;
+      createdInDirectory = true;
+
+      // Ajouter le code-barres au nouvel objet
+      await ObjectController.addBarcodeToObject(
+        objectDirectoryId,
+        barcode
+      );
+    }
+
+    // 2. Ajouter l'objet à l'installation
+    const addResult = await ObjectController.addObjectToInstallation(
+      installationId,
+      objectDirectoryId,
+      quantity,
+      session.user.id,
+      additionalData?.location,
+      additionalData?.expiryDate
+    );
+
+    if (!addResult.success) {
+      return {
+        success: false,
+        error: addResult.error || "Erreur lors de l'ajout",
+        code: addResult.code,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        objectId: addResult.data!.objectInstallationId,
+        createdInDirectory,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur addScannedObject:", error);
+    return {
+      success: false,
+      error: "Erreur lors de l'ajout de l'objet scanné",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * Met à jour la quantité d'un objet dans une installation
+ * (utilisé pour ajouter ou retirer une quantité existante)
+ */
+export async function updateObjectQuantityInInstallation(
+  installationId: string,
+  barcode: string,
+  newQuantity: number
+): Promise<ActionResponse<{ objectId: string; previousQuantity: number }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // Trouver l'objet dans l'installation (jointure nécessaire pour barcode)
+    const obj = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.installationId, installationId),
+        inArray(objectInstallation.objectDirectoryId, 
+          db.select({ id: barcodeDirectory.objectDirectoryId })
+            .from(barcodeDirectory)
+            .where(eq(barcodeDirectory.barcode, barcode))
+        )
+      ),
+      columns: { id: true, quantity: true },
+    });
+
+    if (!obj) {
+      return {
+        success: false,
+        error: "Objet non trouvé dans cette installation",
+        code: ErrorCodes.OBJECT_NOT_FOUND,
+      };
+    }
+
+    const previousQuantity = obj.quantity;
+
+    // Si newQuantity <= 0, supprimer l'objet
+    if (newQuantity <= 0) {
+      const removeResult = await removeObjectFromInstallation(obj.id);
+      if (!removeResult.success) {
+        return removeResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
+      }
+
+      return {
+        success: true,
+        data: {
+          objectId: obj.id,
+          previousQuantity,
+        },
+      };
+    }
+
+    // Mettre à jour la quantité
+    await db
+      .update(objectInstallation)
+      .set({
+        quantity: newQuantity,
+        updatedAt: new Date(),
+      })
+      .where(eq(objectInstallation.id, obj.id));
+
+    return {
+      success: true,
+      data: {
+        objectId: obj.id,
+        previousQuantity,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur updateObjectQuantityInInstallation:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la mise à jour de la quantité",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * Ajoute ou retire une quantité à un objet existant
+ */
+export async function adjustObjectQuantity(
+  installationId: string,
+  barcode: string,
+  adjustment: number // Positif pour ajouter, négatif pour retirer
+): Promise<ActionResponse<{ objectId: string; newQuantity: number }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    // Trouver l'objet dans l'installation (jointure nécessaire pour barcode)
+    const obj = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.installationId, installationId),
+        inArray(objectInstallation.objectDirectoryId, 
+          db.select({ id: barcodeDirectory.objectDirectoryId })
+            .from(barcodeDirectory)
+            .where(eq(barcodeDirectory.barcode, barcode))
+        )
+      ),
+      columns: { id: true, quantity: true },
+    });
+
+    if (!obj) {
+      return {
+        success: false,
+        error: "Objet non trouvé dans cette installation",
+        code: ErrorCodes.OBJECT_NOT_FOUND,
+      };
+    }
+
+    const newQuantity = obj.quantity + adjustment;
+
+    // Si la quantité passe à 0 ou en dessous, supprimer l'objet
+    if (newQuantity <= 0) {
+      const removeResult = await removeObjectFromInstallation(obj.id);
+      if (!removeResult.success) {
+        return removeResult as ActionResponse<{ objectId: string; newQuantity: number }>;
+      }
+
+      return {
+        success: true,
+        data: {
+          objectId: obj.id,
+          newQuantity: 0,
+        },
+      };
+    }
+
+    // Mettre à jour la quantité
+    await db
+      .update(objectInstallation)
+      .set({
+        quantity: newQuantity,
+        updatedAt: new Date(),
+      })
+      .where(eq(objectInstallation.id, obj.id));
+
+    return {
+      success: true,
+      data: {
+        objectId: obj.id,
+        newQuantity,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur adjustObjectQuantity:", error);
+    return {
+      success: false,
+      error: "Erreur lors de l'ajustement de la quantité",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+// ============================================================================
+// ACTIONS UNIFIÉES POUR LE FORMULAIRE DE SCAN (avec tous les champs)
+// ============================================================================
+
+// Action pour ajouter ou mettre à jour un objet scanné avec tous les détails
+// Utilisée par ScanDetailsForm
+// NOTE: Ces fonctions ne sont pas utilisées actuellement, commentées pour éviter les erreurs de compilation
+// TODO: À implémenter correctement plus tard avec support des nouveaux champs dans le backend
+
+// export async function addScannedObjectWithDetails(
+//   prevState: ActionResponse<{ objectInstallationId: string; createdInDirectory: boolean }> | null,
+//   formData: FormData
+// ): Promise<ActionResponse<{ objectInstallationId: string; createdInDirectory: boolean }>> {
+//   // TODO: Implémenter
+// }
+
+// // Action pour mettre à jour un objet existant avec tous les détails
+// // Utilisée par ScanDetailsForm pour les objets déjà existants
+// export async function updateScannedObjectWithDetails(
+//   prevState: ActionResponse<{ objectInstallationId: string }> | null,
+//   formData: FormData
+// ): Promise<ActionResponse<{ objectInstallationId: string }>> {
+//   // TODO: Implémenter
+// }

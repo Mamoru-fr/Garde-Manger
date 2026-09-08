@@ -4,6 +4,8 @@ import {
   userInstallations,
   users,
   objectInstallation,
+  objectDirectory,
+  barcodeDirectory,
 } from "@/lib/db/schema";
 import { ActionResponse, ErrorCodes } from "@/lib/types";
 import {
@@ -13,7 +15,7 @@ import {
   DeleteInstallationInput,
   RemoveUserFromInstallationInput,
 } from "@/lib/validations/installation";
-import { eq, and, inArray, count } from "drizzle-orm";
+import { eq, and, inArray, count, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // ================
@@ -478,6 +480,98 @@ export async function checkInstallationAccessService(
     return {
       success: false,
       error: "Erreur lors de la vérification d'accès",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Obtenir les objets d'une installation avec leurs métadonnées depuis l'annuaire
+export async function getInstallationObjectsService(
+  installationId: string
+): Promise<ActionResponse<{
+  objects: Array<{
+    id: string;
+    objectDirectoryId: string;
+    name: string;
+    brand?: string | null;
+    category?: string | null;
+    description?: string | null;
+    nutriscore?: string | null;
+    imageUrl?: string | null;
+    quantity: number;
+    location?: string | null;
+    expiryDate?: Date | null;
+    openFoodFactsId?: string | null;
+    isReadOnly?: boolean;
+  }>;
+}>> {
+  try {
+    // 1. Récupérer tous les objets de l'installation
+    const installationObjects = await db
+      .select({
+        id: objectInstallation.id,
+        objectDirectoryId: objectInstallation.objectDirectoryId,
+        quantity: objectInstallation.quantity,
+        location: objectInstallation.location,
+        expiryDate: objectInstallation.expiryDate,
+        createdBy: objectInstallation.createdBy,
+      })
+      .from(objectInstallation)
+      .where(eq(objectInstallation.installationId, installationId));
+
+    if (!installationObjects.length) {
+      return { success: true, data: { objects: [] } };
+    }
+
+    // 2. Récupérer les IDs des objets pour le JOIN avec objectDirectory
+    const objectDirectoryIds = installationObjects.map(oi => oi.objectDirectoryId);
+
+    // 3. Récupérer les métadonnées depuis objectDirectory
+    const directoryItems = await db
+      .select({
+        id: objectDirectory.id,
+        name: objectDirectory.name,
+        brand: objectDirectory.brand,
+        category: objectDirectory.categoryId, // ⚠️ À mapper avec le nom de la catégorie plus tard
+        description: objectDirectory.description,
+        nutriscore: objectDirectory.nutriscore,
+        openFoodFactsId: objectDirectory.openFoodFactsId,
+        isReadOnly: objectDirectory.isReadOnly,
+      })
+      .from(objectDirectory)
+      .where(inArray(objectDirectory.id, objectDirectoryIds));
+
+    // 4. Mapper les résultats et fusionner avec les métadonnées
+    const objects = installationObjects.map(oi => {
+      const directoryItem = directoryItems.find(di => di.id === oi.objectDirectoryId);
+      
+      // ✅ Récupérer le nom de la catégorie si possible (optionnel pour l'instant)
+      const categoryName = undefined; // À implémenter plus tard si besoin
+      
+      return {
+        id: oi.id,
+        objectDirectoryId: oi.objectDirectoryId,
+        name: directoryItem?.name || "Objet sans nom",
+        brand: directoryItem?.brand,
+        category: categoryName,
+        description: directoryItem?.description,
+        nutriscore: directoryItem?.nutriscore,
+        imageUrl: undefined, // ✅ À implémenter plus tard (via openFoodFactsId)
+        quantity: oi.quantity,
+        location: oi.location,
+        expiryDate: oi.expiryDate,
+        openFoodFactsId: directoryItem?.openFoodFactsId,
+        isReadOnly: directoryItem?.isReadOnly || false,
+      };
+    });
+
+    return { success: true, data: { objects } };
+  } catch (error) {
+    console.error("[InstallationService] Erreur dans getInstallationObjectsService:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération des objets",
       code: ErrorCodes.INTERNAL_ERROR,
       details: error,
     };

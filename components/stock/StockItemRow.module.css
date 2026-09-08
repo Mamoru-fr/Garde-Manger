@@ -1,0 +1,170 @@
+/* ============================================
+   LIGNE DU TABLEAU (DESKTOP)
+   ============================================ */
+
+.row {
+  border-bottom: 1px solid #e8dfd0;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: #fdf6e8;
+}
+
+.cell {
+  padding: 1rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* Première colonne (image + nom) */
+.cell:first-child {
+  width: 300px;
+  max-width: 300px;
+}
+
+/* Autres colonnes */
+.cell:nth-child(2) { width: 120px; max-width: 120px; } /* Catégorie */
+.cell:nth-child(3) { width: 100px; max-width: 100px; } /* Quantité */
+.cell:nth-child(4) { width: 150px; max-width: 150px; } /* Emplacement */
+.cell:nth-child(5) { width: 150px; max-width: 150px; } /* Date de péremption */
+.cell:nth-child(6) { width: 100px; max-width: 100px; text-align: right; } /* Prix */
+.cell:last-child { width: 120px; max-width: 120px; text-align: right; } /* Actions */
+
+/* Conteneur des infos */
+.itemInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.imageContainer {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: #fdf6e8;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.image {
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.imagePlaceholder {
+  color: #d4b896;
+}
+
+.textInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  color: #2e1a10;
+  font-size: 0.875rem; /* 14px */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nutriscore {
+  flex-shrink: 0;
+}
+
+.details {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem; /* 12px */
+  color: #6b5b47;
+}
+
+.brand {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barcode {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quantité */
+.quantity {
+  font-weight: 500;
+  color: #2e1a10;
+}
+
+/* Emplacement */
+.location {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #6b5b47;
+}
+
+/* Date de péremption */
+.expiryCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem; /* 14px */
+}
+
+/* Installation */
+.installationLabel {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: #fdf6e8;
+  border-radius: 6px;
+  font-size: 0.75rem; /* 12px */
+  color: #6b5b47;
+  font-weight: 500;
+  border: 1px solid #e8dfd0;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b5b47;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.actionButton:hover {
+  color: #2e1a10;
+  background: #f0e6d8;
+}

@@ -47,8 +47,12 @@ export class AuthController {
 
   // Contrôleur pour la connexion
   static async signin(data: SignInInput): Promise<ActionResponse<{ userId: string }>> {
-    // Validation supplémentaire
+    console.log("🟡 [CONTROLLER] Début de AuthController.signin()");
+    console.log("🟡 [CONTROLLER] Data:", { email: data.email, password: "***" });
+    
+    // Validation supplémentaire (défense en profondeur)
     if (!data.email || data.email.length > 255) {
+      console.log("❌ [CONTROLLER] Email invalide");
       return {
         success: false,
         error: "Email invalide",
@@ -57,6 +61,7 @@ export class AuthController {
     }
 
     if (!data.password) {
+      console.log("❌ [CONTROLLER] Mot de passe manque");
       return {
         success: false,
         error: "Mot de passe requis",
@@ -64,8 +69,11 @@ export class AuthController {
       };
     }
 
+    console.log("🟡 [CONTROLLER] Validation OK, appel de signinService()");
     // Appel au service
-    return signinService(data);
+    const result = await signinService(data);
+    console.log("🟡 [CONTROLLER] Résultat de signinService():", result);
+    return result;
   }
 
   // Contrôleur pour la déconnexion

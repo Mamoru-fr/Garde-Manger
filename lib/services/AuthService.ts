@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth/auth";
 import { db } from "@/lib/db/drizzle";
+import { getAuthHeaders } from "@/lib/utils/auth";
 import {
   SignUpInput,
   SignInInput,
@@ -33,13 +34,14 @@ export async function signupService(input: SignUpInput): Promise<ActionResponse<
       };
     }
 
-    // Créer l'utilisateur via Better-Auth
+    // Créer l'utilisateur via Better-Auth - Il faut passer les headers pour que nextCookies() fonctionne
     const response = await auth.api.signUpEmail({
       body: {
         email: input.email,
         password: input.password,
         name: input.name,
       },
+      headers: await getAuthHeaders(),
       asResponse: true,
     });
 
@@ -73,18 +75,29 @@ export async function signupService(input: SignUpInput): Promise<ActionResponse<
 
 // Connexion d'un utilisateur
 export async function signinService(input: SignInInput): Promise<ActionResponse<{ userId: string }>> {
+  console.log("🟠 [SERVICE] Début de signinService()");
+  console.log("🟠 [SERVICE] Input:", { email: input.email, password: "***" });
+  
   try {
-    // Connexion via Better-Auth
+    console.log("🟠 [SERVICE] Appel de auth.api.signInEmail()");
+    // ✅ 1. Appel à Better-Auth pour la connexion
     const response = await auth.api.signInEmail({
       body: {
         email: input.email,
         password: input.password,
       },
+      headers: await getAuthHeaders(),
       asResponse: true,
+    });
+    console.log("🟠 [SERVICE] Réponse de signInEmail:", {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText
     });
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.log("❌ [SERVICE] Erreur de Better-Auth:", errorData);
       return {
         success: false,
         error: errorData.message || "Email ou mot de passe incorrect",
@@ -93,12 +106,27 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       };
     }
 
-    // Récupérer l'utilisateur connecté
-    const user = await response.json();
+    console.log("🟠 [SERVICE] Connexion réussie, vérification de la session...");
+    
+    // ✅ 2. Vérifier que Better-Auth a bien créé la session
+    const session = await auth.api.getSession({ headers: await getAuthHeaders() });
+    
+    if (!session?.user) {
+      console.log("❌ [SERVICE] Session non créée par Better-Auth");
+      return {
+        success: false,
+        error: "Session non créée",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
 
+    console.log("🟠 [SERVICE] Session vérifiée, utilisateur trouvé:", { id: session.user.id, email: session.user.email });
+    
+    // ✅ 3. Récupérer l'userId depuis la session Better-Auth
+    // (plus besoin de requête DB supplémentaire)
     return {
       success: true,
-      data: { userId: user.id },
+      data: { userId: session.user.id },
     };
   } catch (error) {
     console.error("[AuthService] Erreur lors de la connexion:", error);
@@ -106,7 +134,7 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       success: false,
       error: "Une erreur est survenue lors de la connexion",
       code: ErrorCodes.INTERNAL_ERROR,
-      details: error,
+      details: error instanceof Error ? error.message : error,
     };
   }
 }
@@ -114,7 +142,8 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
 // Déconnexion d'un utilisateur
 export async function signoutService(): Promise<ActionResponse<void>> {
   try {
-    await auth.api.signOut();
+    // Il faut passer les headers pour que nextCookies() fonctionne
+    await auth.api.signOut({ headers: await getAuthHeaders() });
     return {
       success: true,
     };
@@ -234,7 +263,8 @@ export async function resendVerificationEmailService(email: string): Promise<Act
 // Obtenir la session utilisateur
 export async function getSessionService() {
   try {
-    const session = await auth.api.getSession();
+    // Il faut passer les headers pour que nextCookies() fonctionne
+    const session = await auth.api.getSession({ headers: await getAuthHeaders() });
     return {
       success: true,
       session,

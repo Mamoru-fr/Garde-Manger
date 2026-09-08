@@ -26,6 +26,8 @@ function formatDate(date: Date | null | undefined): string {
   });
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function ObjectsPage({
   searchParams,
 }: {

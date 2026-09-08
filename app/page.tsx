@@ -1,22 +1,25 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth/auth";
-import { getAuthHeaders } from "@/lib/utils/auth";
+import { getCurrentSession } from "@/lib/utils/auth";
 import styles from "./Home.module.css";
 
+// Page d'accueil - côté serveur pour la vérification de la session
 export default async function HomePage() {
-  // Vérifier si l'utilisateur est connecté
-  const headers = await getAuthHeaders();
-  const session = await auth.api.getSession({
-    headers,
+  // Vérifier la session côté serveur
+  const session = await getCurrentSession();
+  
+  console.log("🔐 [SERVER /] Vérification de la session:", {
+    hasUser: !!session?.user,
+    userEmail: session?.user?.email
   });
   
-  // Si connecté, rediriger vers la liste des installations
+  // Si l'utilisateur est connecté, rediriger vers /installations
   if (session?.user) {
+    console.log("✅ [SERVER /] Utilisateur connecté, redirection vers /installations");
     redirect("/installations");
   }
-
-  // Sinon, affichier la page d'accueil avec un lien vers la connexion
+  
+  // Sinon, afficher la page d'accueil pour les utilisateurs non connectés
   return (
     <main className={styles.container}>
       <div className={styles.hero}>
@@ -41,7 +44,7 @@ export default async function HomePage() {
             href="/connexion"
             className={styles.ctaPrimary}
           >
-            Se connecter
+            Commencer
           </Link>
           <Link
             href="/inscription"
@@ -82,3 +85,4 @@ export default async function HomePage() {
     </main>
   );
 }
+

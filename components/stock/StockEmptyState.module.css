@@ -1,0 +1,57 @@
+/* ============================================
+   ÉTAT VIDE DU STOCK
+   ============================================ */
+
+.emptyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: #fdf6e8;
+  border-radius: 12px;
+  border: 1px dashed #d4b896;
+}
+
+.emptyIcon {
+  color: #8b4513;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+}
+
+.emptyTitle {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 600;
+  color: #2e1a10;
+  margin: 0 0 0.5rem 0;
+}
+
+.emptyDescription {
+  font-size: 1rem; /* 16px */
+  color: #6b5b47;
+  margin: 0 0 1.5rem 0;
+  max-width: 400px;
+}
+
+.scanButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #8b4513;
+  color: white;
+  border-radius: 8px;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.scanButton:hover {
+  background: #6a350f;
+}
+
+.scanButton:active {
+  background: #5a2d11;
+}

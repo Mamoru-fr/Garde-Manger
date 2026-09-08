@@ -1,0 +1,242 @@
+/* ============================================
+   LAYOUT DE LA PAGE
+   ============================================ */
+
+.pageContainer {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fdf6e8;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+  background: linear-gradient(135deg, #4a2c14 0%, #8b4513 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(46, 26, 16, 0.1);
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="0.5" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.headerContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.backLink:hover {
+  color: white;
+  text-decoration: none;
+}
+
+.title {
+  font-size: 1.75rem;
+  color: white;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0.25rem 0 0 0;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  color: #8b4513;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.addButton:hover {
+  background: #f0e6d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Bouton Scanner */
+.scannerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fdf6e8;
+  color: #8b4513;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+  border: 1px solid #d4b896;
+}
+
+.scannerButton:hover {
+  background: #f0e6d8;
+  color: #8b4513;
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   FILTRES
+   ============================================ */
+
+.filtersContainer {
+  max-width: 1400px;
+  margin: 1rem auto;
+  padding: 0 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(46, 26, 16, 0.08);
+  border: 1px solid #e8dfd0;
+  padding: 1rem;
+}
+
+/* ============================================
+   CONTENU PRINCIPAL
+   ============================================ */
+
+.mainContent {
+  flex: 1;
+  margin: 0 auto;
+  padding: 0 0 0 0;
+  width: 100%;
+}
+
+/* ============================================
+   ÉTATS DE CHARGEMENT ET ERREURS
+   ============================================ */
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #6b5b47;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(139, 69, 19, 0.1);
+  border-top-color: #8b4513;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.errorMessage {
+  font-size: 1.125rem;
+  color: #8b4513;
+  margin: 0 0 1.5rem;
+  max-width: 500px;
+}
+
+.retryButton {
+  background: #8b4513;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryButton:hover {
+  background: #6a350f;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1.25rem 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .filtersContainer {
+    padding: 0.75rem;
+  }
+
+  .mainContent {
+    padding: 0 0.75rem 1.5rem;
+  }
+
+  .addButton {
+    width: 100%;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .pageContainer {
+    padding-left: calc((100vw - 1400px) / 2);
+    padding-right: calc((100vw - 1400px) / 2);
+  }
+}

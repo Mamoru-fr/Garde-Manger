@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   SignUpSchema,
@@ -59,9 +58,12 @@ export async function signin(
   prevState: ActionResponse<{ userId: string }> | null,
   formData: FormData
 ): Promise<ActionResponse<{ userId: string }>> {
+  console.log("🟢 [SERVER ACTION] Début de signin()");
+  
   // Validation des entrées avec Zod
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  console.log("🟢 [SERVER ACTION] Email:", email);
 
   const validation = SignInSchema.safeParse({
     email,
@@ -69,6 +71,7 @@ export async function signin(
   });
 
   if (!validation.success) {
+    console.log("❌ [SERVER ACTION] Validation échouée:", validation.error.format());
     return {
       success: false,
       error: validation.error.flatten().fieldErrors
@@ -79,10 +82,13 @@ export async function signin(
     };
   }
 
+  console.log("🟢 [SERVER ACTION] Validation OK, appel de AuthController.signin()");
   // Appel au contrôleur
   const result = await AuthController.signin(validation.data);
+  console.log("🟢 [SERVER ACTION] Résultat du contrôleur:", result);
 
   if (!result.success) {
+    console.log("❌ [SERVER ACTION] Échec du contrôleur:", result.error);
     return {
       ...result,
       // Rediriger avec l'erreur pour l'afficher dans l'URL
@@ -90,8 +96,9 @@ export async function signin(
     };
   }
 
-  // Rediriger vers la page d'accueil (sera redirigé vers /installations)
-  redirect("/");
+  console.log("✅ [SERVER ACTION] Connexion réussie, redirection vers /installations");
+  // Rediriger directement vers /installations après une connexion réussie
+  redirect("/installations");
 }
 
 // Action pour la déconnexion

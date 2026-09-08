@@ -1444,7 +1444,7 @@ export async function fetchNutritionalDataService(
     return {
       success: true,
       data: {
-        nutriscore: product.nutriscore_grade || "unknown",
+        nutriscore: product.nutriscore_grade || "U",
         productName: product.product_name || product.abbreviated_product_name || "Produit inconnu",
         brand: product.brands || "Inconnu",
         ingredients,

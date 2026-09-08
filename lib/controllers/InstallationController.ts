@@ -17,6 +17,7 @@ import {
   addUserToInstallationService,
   removeUserFromInstallationService,
   checkInstallationAccessService,
+  getInstallationObjectsService, // ✅ Ajout de la nouvelle fonction
 } from "@/lib/services/InstallationService";
 import { eq } from "drizzle-orm";
 
@@ -185,6 +186,40 @@ export class InstallationController {
         objectCount: number;
       };
     }>;
+  }
+
+  // Obtenir les objets d'une installation avec leurs métadonnées
+  static async getInstallationObjects(
+    installationId: string
+  ): Promise<ActionResponse<{
+    objects: Array<{
+      id: string;
+      objectDirectoryId: string;
+      name: string;
+      brand?: string | null;
+      category?: string | null;
+      description?: string | null;
+      nutriscore?: string | null;
+      imageUrl?: string | null;
+      quantity: number;
+      location?: string | null;
+      expiryDate?: Date | null;
+      openFoodFactsId?: string | null;
+      isReadOnly?: boolean;
+    }>;
+  }>> {
+    // Vérification de l'installation
+    if (!installationId || installationId.trim() === "") {
+      return {
+        success: false,
+        error: "ID installation requis",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Appel au service
+    const result = await getInstallationObjectsService(installationId);
+    return result;
   }
 
   // Mettre à jour une installation
@@ -425,5 +460,149 @@ export class InstallationController {
 
     // Appel au service
     return checkInstallationAccessService(userId, installationId);
+  }
+
+  // Ajouter un membre à une installation via son email
+  static async addMemberByEmail(
+    installationId: string,
+    requesterId: string,
+    userEmail: string,
+    role: string
+  ): Promise<ActionResponse<{ userInstallationId: string }>> {
+    // Validation
+    if (!installationId || !userEmail || !role) {
+      return {
+        success: false,
+        error: "Toutes les données sont requises",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Vérifier que le demandeur est le propriétaire de l'installation
+    const installation = await db
+      .select()
+      .from(installations)
+      .where(eq(installations.id, installationId))
+      .limit(1);
+
+    if (!installation.length) {
+      return {
+        success: false,
+        error: "Installation non trouvée",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // Vérifier que le demandeur est bien le propriétaire
+    if (installation[0].ownerId !== requesterId) {
+      return {
+        success: false,
+        error: "Seul le propriétaire peut ajouter des membres",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Trouver l'utilisateur par email
+    const targetUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userEmail))
+      .limit(1);
+
+    if (!targetUser.length) {
+      return {
+        success: false,
+        error: "Utilisateur non trouvé",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // Vérifier que l'utilisateur n'est pas déjà membre de cette installation
+    const existingMember = await db
+      .select()
+      .from(userInstallations)
+      .where(
+        eq(userInstallations.installationId, installationId) &&
+        eq(userInstallations.userId, targetUser[0].id)
+      )
+      .limit(1);
+
+    if (existingMember.length) {
+      return {
+        success: false,
+        error: "Cet utilisateur est déjà membre de cette installation",
+        code: ErrorCodes.CONFLICT,
+      };
+    }
+
+    // Ajouter le membre
+    return addUserToInstallationService({
+      installationId,
+      userId: targetUser[0].id,
+      role: role as "owner" | "editor" | "viewer",
+    });
+  }
+
+  // Supprimer un membre d'une installation
+  static async removeMember(
+    installationId: string,
+    requesterId: string,
+    userId: string
+  ): Promise<ActionResponse<{ userInstallationId: string }>> {
+    // Validation
+    if (!installationId || !userId) {
+      return {
+        success: false,
+        error: "ID installation et utilisateur requis",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    // Vérifier que le demandeur est le propriétaire de l'installation
+    const installation = await db
+      .select()
+      .from(installations)
+      .where(eq(installations.id, installationId))
+      .limit(1);
+
+    if (!installation.length) {
+      return {
+        success: false,
+        error: "Installation non trouvée",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // Vérifier que le demandeur est bien le propriétaire
+    if (installation[0].ownerId !== requesterId) {
+      return {
+        success: false,
+        error: "Seul le propriétaire peut supprimer des membres",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier que le membre existe
+    const member = await db
+      .select()
+      .from(userInstallations)
+      .where(
+        eq(userInstallations.installationId, installationId) &&
+        eq(userInstallations.userId, userId)
+      )
+      .limit(1);
+
+    if (!member.length) {
+      return {
+        success: false,
+        error: "Membre non trouvé dans cette installation",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // Supprimer le membre
+    return removeUserFromInstallationService(
+      { installationId, userId }
+    );
   }
 }
