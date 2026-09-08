@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { InstallationRole } from "@/lib/types";
-import { Home, Plus, Package, Users, LogOut } from "lucide-react";
+import { Home, Plus, Package, Users, LogOut, Warehouse } from "lucide-react";
 import { signout } from "@/lib/actions/signActions";
 import styles from "./Installations.module.css";
 
@@ -59,6 +59,10 @@ export default function InstallationsClient({ installations }: InstallationsClie
       <div className={styles.header}>
         <h1>Mes Installations</h1>
         <div className={styles.headerActions}>
+          <Link href="/stock" className={`${styles.btn} ${styles.btnStock}`}>
+            <Warehouse size={20} />
+            Mon Stock Global
+          </Link>
           <Link href="/installations/new" className={`${styles.btn} ${styles.btnPrimary}`}>
             <Plus size={20} />
             Nouvelle Installation

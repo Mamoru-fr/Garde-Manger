@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Package, Users, Calendar, MapPin, Settings, Plus, Trash2, Edit, RefreshCw } from "lucide-react";
+import { ArrowLeft, Package, Users, Calendar, MapPin, Settings, Plus, Trash2, Edit, RefreshCw, Warehouse } from "lucide-react";
 import { InstallationRole } from "@/lib/types";
 import styles from "./InstallationDetails.module.css";
 import MembersModal from "./MembersModal";
@@ -126,6 +126,15 @@ export default function InstallationDetailsClient({
             </div>
             
             <div className={styles.headerActions}>
+              {/* Bouton vers le stock */}
+              <Link
+                href={`/installations/${installationId}/stock`}
+                className={`${styles.btn} ${styles.btnStock}`}
+              >
+                <Warehouse size={16} />
+                Voir le stock
+              </Link>
+              
               {/* ✅ Bouton Rafraîchir DEPLACÉ ICI (toujours visible en haut) */}
               <button
                 onClick={() => router.refresh()}

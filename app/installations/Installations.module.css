@@ -58,6 +58,16 @@
   background-color: #f0e6d8;
 }
 
+/* Bouton Mon Stock */
+.btnStock {
+  background-color: #059669;
+  color: white;
+}
+
+.btnStock:hover {
+  background-color: #047857;
+}
+
 /* Grille des installations */
 .installationsGrid {
   display: grid;
