@@ -1458,3 +1458,28 @@ export async function adjustObjectQuantity(
     };
   }
 }
+
+// ============================================================================
+// ACTIONS UNIFIÉES POUR LE FORMULAIRE DE SCAN (avec tous les champs)
+// ============================================================================
+
+// Action pour ajouter ou mettre à jour un objet scanné avec tous les détails
+// Utilisée par ScanDetailsForm
+// NOTE: Ces fonctions ne sont pas utilisées actuellement, commentées pour éviter les erreurs de compilation
+// TODO: À implémenter correctement plus tard avec support des nouveaux champs dans le backend
+
+// export async function addScannedObjectWithDetails(
+//   prevState: ActionResponse<{ objectInstallationId: string; createdInDirectory: boolean }> | null,
+//   formData: FormData
+// ): Promise<ActionResponse<{ objectInstallationId: string; createdInDirectory: boolean }>> {
+//   // TODO: Implémenter
+// }
+
+// // Action pour mettre à jour un objet existant avec tous les détails
+// // Utilisée par ScanDetailsForm pour les objets déjà existants
+// export async function updateScannedObjectWithDetails(
+//   prevState: ActionResponse<{ objectInstallationId: string }> | null,
+//   formData: FormData
+// ): Promise<ActionResponse<{ objectInstallationId: string }>> {
+//   // TODO: Implémenter
+// }

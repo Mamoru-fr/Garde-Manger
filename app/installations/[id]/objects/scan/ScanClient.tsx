@@ -4,10 +4,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Check, AlertTriangle, Loader2, Barcode, Eye, EyeOff, Camera, CameraOff } from "lucide-react";
 import { BrowserMultiFormatReader, BarcodeFormat } from "@zxing/browser";
-import { performCompleteScan, adjustObjectQuantity, addScannedObject } from "@/lib/actions/ObjectActions";
+import { performCompleteScan } from "@/lib/actions/ObjectActions";
 import { SimplifiedDirectoryItem, ScanStatus } from "@/lib/types/scanTypes";
-import ScanResultModal from "./ScanResultModal";
-import NewObjectModal from "./NewObjectModal";
+import ScanDetailsForm from "@/components/objects/ScanDetailsForm";
 import styles from "./Scan.module.css";
 
 interface ScanClientProps {
@@ -69,9 +68,8 @@ export default function ScanClient({ installationId, installationName }: ScanCli
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
 
-  // État des modales
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [showNewObjectModal, setShowNewObjectModal] = useState(false);
+  // État du formulaire de détails
+  const [showDetailsForm, setShowDetailsForm] = useState(false);
 
   // Nettoyer le scanner
   const cleanupScanner = useCallback(() => {
@@ -277,11 +275,8 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
       setScanResult(result.data);
 
-      if (result.data.foundInDirectory || result.data.foundInInstallation) {
-        setShowResultModal(true);
-      } else {
-        setShowNewObjectModal(true);
-      }
+      // Toujours afficher le formulaire de détails, quelle que soit la situation
+      setShowDetailsForm(true);
 
       setScanStatus('found');
     } catch (error) {
@@ -303,9 +298,8 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     }, 500);
   }, [installationId, router]);
 
-  const handleCloseModals = useCallback(() => {
-    setShowResultModal(false);
-    setShowNewObjectModal(false);
+  const handleCloseDetailsForm = useCallback(() => {
+    setShowDetailsForm(false);
     setScannedBarcode(null);
     setScanResult(null);
     startScanner();
@@ -563,24 +557,14 @@ export default function ScanClient({ installationId, installationName }: ScanCli
         </button>
       </main>
 
-      {showResultModal && scanResult && (
-        <ScanResultModal
-          item={scanResult.directoryItem || { id: '', name: 'Objet inconnu', barcode: scannedBarcode || '' }}
-          barcode={scannedBarcode || ''}
+      {showDetailsForm && scanResult && scannedBarcode && (
+        <ScanDetailsForm
           installationId={installationId}
-          currentQuantity={scanResult.currentQuantity}
-          onClose={handleCloseModals}
-          onSuccess={handleActionSuccess}
-        />
-      )}
-
-      {showNewObjectModal && scannedBarcode && (
-        <NewObjectModal
+          directoryItem={scanResult.directoryItem || null}
           barcode={scannedBarcode}
-          installationId={installationId}
-          onClose={handleCloseModals}
+          currentQuantity={scanResult.currentQuantity}
+          onClose={handleCloseDetailsForm}
           onSuccess={handleActionSuccess}
-          directoryItem={scanResult?.directoryItem || null} // ✅ Passer l'objet pour vérifier isReadOnly
         />
       )}
     </div>
