@@ -322,7 +322,7 @@ export default function InstallationDetailsClient({
                       {/* Actions pour chaque objet (À implémenter plus tard) */}
                       {userRole !== "viewer" && (
                         <Link
-                          href={`/installations/${installationId}/objects/${obj.objectDirectoryId}/edit`}
+                          href={`/installations/${installationId}/objects/${obj.id}/edit`}
                           className={styles.actionButton}
                           title="Modifier"
                         >
