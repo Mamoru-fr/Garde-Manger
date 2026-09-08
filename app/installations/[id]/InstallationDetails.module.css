@@ -41,16 +41,17 @@
   gap: 0.375rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
-  background-color: #059669;
-  color: white;
-  border: none;
+  background: #fdf6e8;
+  color: #8b4513;
+  border: 1px solid #d4b896;
   border-radius: 6px;
   cursor: pointer;
   text-decoration: none;
 }
 
 .btnStock:hover {
-  background-color: #047857;
+  background: #f0e6d8;
+  color: #8b4513;
 }
 
 /* ========== EN-TÊTE ========== */

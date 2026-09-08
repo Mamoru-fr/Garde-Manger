@@ -4,7 +4,7 @@ import styles from "./NutriscoreBadge.module.css";
 
 // Props du composant
 export interface NutriscoreBadgeProps {
-  score: string;  // A, B, C, D, E, ou "unknown"
+  score: string;  // A, B, C, D, E, ou "U" pour unknown
   size?: "small" | "medium" | "large";
   showLabel?: boolean;
   showTooltip?: boolean;
@@ -17,7 +17,7 @@ const nutriscoreLabels: Record<string, string> = {
   C: "Moyen",
   D: "Mauvais",
   E: "Très mauvais",
-  unknown: "Inconnu",
+  U: "Inconnu",
 };
 
 // Mapping des descriptions pour le tooltip
@@ -27,13 +27,13 @@ const nutriscoreDescriptions: Record<string, string> = {
   C: "Produit de qualité nutritionnelle moyenne",
   D: "Produit de qualité nutritionnelle mauvaise",
   E: "Produit de très mauvaise qualité nutritionnelle",
-  unknown: "Nutriscore non disponible",
+  U: "Nutriscore non disponible",
 };
 
 // Normaliser le score (passer en majuscule et gérer les valeurs invalides)
 function normalizeScore(score: string): string {
   const normalized = score?.toUpperCase()?.trim();
-  return ["A", "B", "C", "D", "E"].includes(normalized) ? normalized : "unknown";
+  return ["A", "B", "C", "D", "E"].includes(normalized) ? normalized : "U";
 }
 
 // Obtenir la classe CSS en fonction du score

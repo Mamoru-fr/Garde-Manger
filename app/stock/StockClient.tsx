@@ -242,9 +242,9 @@ export default function StockClient({
         {installationId && (
           <Link
             href={`/installations/${installationId}/objects/scan`}
-            className={styles.addButton}
+            className={styles.scannerButton}
           >
-            <Plus size={20} />
+            <Plus size={18} />
             Scanner un objet
           </Link>
         )}

@@ -60,12 +60,14 @@
 
 /* Bouton Mon Stock */
 .btnStock {
-  background-color: #059669;
-  color: white;
+  background: white;
+  color: #8b4513;
+  border: 1px solid #d4b896;
 }
 
 .btnStock:hover {
-  background-color: #047857;
+  background: #f0e6d8;
+  color: #8b4513;
 }
 
 /* Grille des installations */

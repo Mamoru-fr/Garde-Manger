@@ -14,15 +14,15 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background-color: var(--color-white, #ffffff);
-  border: 1px solid var(--color-gray-light, #e5e7eb);
-  border-radius: 0.5rem; /* 8px */
+  background-color: #fdf6e8;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
   min-width: 140px;
   flex: 1;
 }
 
 .statIcon {
-  color: var(--color-text-secondary, #6b7280);
+  color: #8b4513;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,13 +36,13 @@
 .statValue {
   font-size: 1.5rem; /* 24px */
   font-weight: 700;
-  color: var(--color-text-primary, #111827);
+  color: #2e1a10;
   line-height: 1.25rem;
 }
 
 .statLabel {
   font-size: 0.75rem; /* 12px */
-  color: var(--color-text-secondary, #6b7280);
+  color: #6b5b47;
   margin-top: 0.25rem;
 }
 

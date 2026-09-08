@@ -3,7 +3,7 @@
    ============================================ */
 
 .row {
-  border-bottom: 1px solid var(--color-gray-light, #e5e7eb);
+  border-bottom: 1px solid #e8dfd0;
 }
 
 .row:last-child {
@@ -11,7 +11,7 @@
 }
 
 .row:hover {
-  background-color: var(--color-gray-lighter, #f9fafb);
+  background: #fdf6e8;
 }
 
 .cell {
@@ -46,8 +46,8 @@
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  background-color: var(--color-gray-lighter, #f9fafb);
-  border-radius: 0.375rem; /* 6px */
+  background: #fdf6e8;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,11 +56,11 @@
 
 .image {
   object-fit: cover;
-  border-radius: 0.375rem; /* 6px */
+  border-radius: 6px;
 }
 
 .imagePlaceholder {
-  color: var(--color-gray-medium, #9ca3af);
+  color: #d4b896;
 }
 
 .textInfo {
@@ -80,7 +80,7 @@
 
 .name {
   font-weight: 600;
-  color: var(--color-text-primary, #111827);
+  color: #2e1a10;
   font-size: 0.875rem; /* 14px */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,7 +95,7 @@
   display: flex;
   gap: 0.75rem;
   font-size: 0.75rem; /* 12px */
-  color: var(--color-text-secondary, #6b7280);
+  color: #6b5b47;
 }
 
 .brand {
@@ -113,7 +113,7 @@
 /* Quantité */
 .quantity {
   font-weight: 500;
-  color: var(--color-text-primary, #111827);
+  color: #2e1a10;
 }
 
 /* Emplacement */
@@ -121,7 +121,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: #6b5b47;
 }
 
 /* Date de péremption */
@@ -136,11 +136,12 @@
 .installationLabel {
   display: inline-block;
   padding: 0.25rem 0.5rem;
-  background-color: var(--color-gray-lighter, #f3f4f6);
-  border-radius: 0.375rem; /* 6px */
+  background: #fdf6e8;
+  border-radius: 6px;
   font-size: 0.75rem; /* 12px */
-  color: var(--color-text-secondary, #6b7280);
+  color: #6b5b47;
   font-weight: 500;
+  border: 1px solid #e8dfd0;
 }
 
 /* Actions */
@@ -157,13 +158,13 @@
   padding: 0.5rem;
   background: none;
   border: none;
-  border-radius: 0.375rem; /* 6px */
+  border-radius: 6px;
   cursor: pointer;
-  color: var(--color-text-secondary, #6b7280);
+  color: #6b5b47;
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .actionButton:hover {
-  color: var(--color-text-primary, #111827);
-  background-color: var(--color-gray-medium, #e5e7eb);
+  color: #2e1a10;
+  background: #f0e6d8;
 }
