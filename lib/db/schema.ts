@@ -268,6 +268,7 @@ export const objectDirectory = pgTable("object_directory", {
   nutriscore: text("nutriscore"),  // Ex: "A", "B", "C", "D", "E"
   brand: text("brand"),  // Marque (ex: "Chiquita", "Carrefour")
   openFoodFactsId: text("open_food_facts_id"),  // ID pour l'API OpenFoodFacts
+  imageUrl: text("image_url"),  // URL de l'image du produit
   defaultQuantity: integer("default_quantity").default(1),
   isReadOnly: boolean("is_read_only").default(false),  // ✅ Verrouillage pour les objets OpenFoodFacts
   createdAt: timestamp("created_at").defaultNow(),
