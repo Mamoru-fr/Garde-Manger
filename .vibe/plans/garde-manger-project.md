@@ -1,222 +1,223 @@
 # 📋 Garde-Manger - Plan de Projet & Suivi
 
-**Dernière mise à jour**: 2026-09-07 21:07  
-**Répertoire**: `/Volumes/Lexar/GitHub/Garde-Manger`  
-**Statut**: Phase 3 COMPLETÉE - Pages manquantes créées  
-**Objectif**: Finaliser les corrections et tester le build
+**Dernière mise à jour**: 2026-09-08
+**Répertoire**: `/Volumes/Lexar/GitHub/Garde-Manger`
+**Statut**: ✅ **TOUTES LES TÂCHES CRITIQUES RÉSOLUES** - Build réussi
+**Objectif**: Projet sorti de la phase critique, prêt pour tests utilisateurs
 
 ---
 
 ## 🎯 **Contexte & Objectifs**
 
-### Objectifs du Projet
-- ✅ **Gestion de garde-manger**: Permettre aux utilisateurs de gérer leurs produits alimentaires
-- ✅ **Partage collaboratif**: Partager des installations avec d'autres utilisateurs (owner/editor/viewer)
-- ✅ **Scan de codes-barres**: Intégration avec OpenFoodFacts pour ajouter des produits automatiquement
-- ✅ **PWA Ready**: Application web progressive pour une expérience mobile
-
-### Statut Actuel
-- ✅ **Authentification**: 100% fonctionnelle (Better-Auth bien configuré)
+### Statut Global
+- ✅ **Build**: **FONCTIONNEL** - `pnpm build` réussit
+- ✅ **Authentification**: 100% fonctionnelle (Better-Auth configuré)
 - ✅ **Middleware**: proxy.ts en place, pas de conflit
 - ✅ **Base de données**: Schéma complet + connexion Neon
 - ✅ **Configuration**: .env complet
-- ✅ **Pages manquantes**: TOUTES CRÉÉES ⬅️ NOUVEAU
-
-### Problèmes Résolus
-- ✅ BUG-001: Aucun middleware.ts trouvé (proxy.ts utilisé)
-- ✅ BUG-002: next.config.js corrigé (serverExternalPackages déplacé)
-- ✅ BUG-003: .env existe avec DATABASE_URL valide
-- ✅ AUTH-001: Authentification Better-Auth fonctionnelle
-- ✅ OBJ-007: Page objects/new/page.tsx CRÉÉE
-- ✅ OBJ-008: Page objects/scan/page.tsx CRÉÉE  
-- ✅ INST-009: Page installations/[id]/settings/page.tsx CRÉÉE
+- ✅ **Architecture ACS**: Maintenue partout
 
 ---
 
-## ✅ **Fonctionnalités COMPLÈTEMENT Implémentées**
+## ✅ **Problèmes Résolus**
 
-### Authentification (100%)
-- ✅ Configuration Better-Auth avec Drizzle/Neon
-- ✅ Connexion, Inscription, Déconnexion
-- ✅ Vérification Email, Réinitialisation MDP
-- ✅ Architecture Action-Controller-Service
-- ✅ Persistance de session
+### 🔴 CRITIQUE - Tous Résolus
+| ID | Problème | Solution | Statut |
+|----|----------|----------|--------|
+| BUG-001 | Conflit middleware/proxy | Utilisation de proxy.ts uniquement | ✅ OK |
+| BUG-002 | Config Next.js invalide | `serverExternalPackages` hors de `experimental` | ✅ OK |
+| BUG-003 | DATABASE_URL manquantes | Fichier .env complet créé | ✅ OK |
 
-### Installations (100%)
-- ✅ Créer, Lister, Détails, Éditer
-- ✅ **Partage avec rôles** (owner/editor/viewer)
-- ✅ Vérification d'accès
-- ✅ **Paramètres** (settings page CRÉÉE)
+### 🟡 HAUTE PRIORITÉ - Résolus
+| ID | Problème | Solution | Statut |
+|----|----------|----------|--------|
+| AUTH-001 | Session non persistée | Utilisation `auth.api.getSession()` directement | ✅ OK |
 
-### Objets (100%)
-- ✅ Lister tous objets
-- ✅ **Scanner code-barres** (fonctionnel)
-- ✅ Intégration OpenFoodFacts
-- ✅ Ajouter objet à installation
-- ✅ Gestion péremption, Nutriscore
-- ✅ **Ajouter objet** (new page CRÉÉE)
-- ✅ **Scanner global** (scan page CRÉÉE)
+### 🟡 MOYENNE PRIORITÉ - Pages Manquantes Créées
+| ID | Page | Solution | Statut |
+|----|------|----------|--------|
+| OBJ-007 | `/objects/new/page.tsx` | Redirige vers première installation pour scan | ✅ OK |
+| OBJ-008 | `/objects/scan/page.tsx` | Redirige vers première installation pour scan | ✅ OK |
+| INST-009 | `/installations/[id]/settings/page.tsx` | Page paramètres avec infos techniques + suppression | ✅ OK |
 
-### Base de données (100%)
-- ✅ Schéma Drizzle complet (15+ tables)
-- ✅ Connexion Neon
+### ⚡ **Corrections Technique Majeures**
 
-### UI/UX (100%)
-- ✅ Responsive Design
-- ✅ Thème sombre/clair
-- ✅ Feedback visuel
+#### 1. EditInstallationForm Props
+**Problème**: `Event handlers cannot be passed to Client Component props`
+**Cause**: Passage de `onSuccess={() => redirect(...)}` depuis Server Components vers Client Component
+**Solution**: Suppression de la prop `onSuccess` de `edit/page.tsx` et `settings/page.tsx`. Le composant gère déjà la redirection internement via `router.push()`.
 
-### Configuration (100%)
-- ✅ proxy.ts (headers de permissions)
-- ✅ .env complet
-- ✅ next.config.js corrigé
+#### 2. BarcodeScanner Props Mismatch
+**Problème**: Type error - `userId` et `installations` passés à `BarcodeScanner` qui attend `onScan`, `onError`, etc.
+**Cause**: Ancienne version de `/app/objects/scan/page.tsx` essayait d'utiliser directement `BarcodeScanner`
+**Solution**: 
+- Suppression du code incorrect
+- La page redirige maintenant vers `/installations/[id]/objects/scan`
+- `BarcodeScanner` reste utilisé correctement dans `ScanClient.tsx`
 
 ---
 
-## 🎯 **Actions Terminees**
+## 📊 **État des Fonctionnalités**
 
-### ✅ Phase 1: Résolution Critique - TERMINÉE
-| ID | Titre | Statut | Temps | Date |
-|----|-------|--------|-------|------|
-| BUG-002 | Corriger next.config.js | ✅ DONE | 5 min | 21:07 |
+### ✅ Authentification (100%)
+- Configuration Better-Auth + Drizzle + Neon
+- Connexion, Inscription, Déconnexion
+- Vérification Email, Réinitialisation MDP
+- Session persistée
 
-### ✅ Phase 2: Authentification - TERMINÉE  
-| ID | Titre | Statut | Temps | Date |
-|----|-------|--------|-------|------|
-| AUTH-001 | Better-Auth configuré | ✅ DONE | 0 min | Déjà OK |
+### ✅ Installations (100%)
+- Créer, Lister, Détails, Éditer
+- Partage avec rôles (owner/editor/viewer)
+- Vérification d'accès
+- **Paramètres avancés** (suppression, infos techniques)
 
-### ✅ Phase 3: Pages Manquantes - TERMINÉE
-| ID | Titre | Statut | Temps | Date | Fichier |
-|----|-------|--------|-------|------|--------|
-| OBJ-007 | Créer page objects/new/page.tsx | ✅ DONE | - | 21:06 | `app/objects/new/page.tsx` |
-| OBJ-008 | Créer page objects/scan/page.tsx | ✅ DONE | - | 21:06 | `app/objects/scan/page.tsx` |
-| INST-009 | Créer page installations/[id]/settings/page.tsx | ✅ DONE | - | 21:07 | `app/installations/[id]/settings/page.tsx` |
+### ✅ Objets (100%)
+- Lister tous les objets (annuaire global)
+- Scanner code-barres avec OpenFoodFacts
+- Ajouter à une installation
+- Gestion de péremption
+- Historique des modifications
+
+### ✅ Pages Créées/Réparées
+- `/installations/[id]/edit/page.tsx` - Modificationnom/description
+- `/installations/[id]/settings/page.tsx` - **NOUVEAU**: Paramètres + suppression
+- `/objects/new/page.tsx` - Redirige vers installation pour scan
+- `/objects/scan/page.tsx` - Redirige vers installation pour scan
 
 ---
 
-## 📋 **Sous-Tâches des Pages Créées**
+## 🗂️ **Structure Finalisée**
 
-### OBJ-007: objects/new/page.tsx
-```tsx
-✅ Server Component avec vérification session
-✅ Récupération des installations utilisateur
-✅ Intégration du composant ObjectForm
-✅ Redirection vers /connexion si non authentifié
+```
+Garde-Manger/
+├── .env                                    # ✅ Toutes les variables
+├── proxy.ts                                # ✅ Configuration headers
+├── next.config.js                          # ✅ CORRIGÉ
+├── app/
+│   ├── (auth)/                            # ✅ Auth complète
+│   │   ├── connexion/
+│   │   ├── inscription/
+│   │   ├── deconnexion/
+│   │   ├── mot-de-passe/
+│   │   └── verification-email/
+│   ├── installations/                     # ✅ 100% fonctionnel
+│   │   ├── [id]/
+│   │   │   ├── page.tsx                  # Détails + objets
+│   │   │   ├── edit/                     # Modifier
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings/                 # ⭐ NOUVEAU
+│   │   │   │   └── page.tsx             # Suppression + infos
+│   │   │   └── objects/scan/
+│   │   │       └── page.tsx
+│   │   └── new/                          # Créer
+│   ├── objects/                           # ✅ Pages disponibles
+│   │   ├── [id]/                          # Dossier vide (futur)
+│   │   ├── new/                          # Redirige → installation
+│   │   │   └── page.tsx
+│   │   ├── scan/                         # Redirige → installation
+│   │   │   └── page.tsx
+│   │   └── page.tsx                      # Liste annuaire
+└── lib/
+    ├── auth/auth.ts                      # ✅ Better-Auth
+    ├── actions/                         # ✅ Server Actions
+    ├── controllers/                     # ✅ Contrôleurs
+    ├── services/                        # ✅ Services
+    └── db/schma.ts                       # ✅ 15+ tables
 ```
 
-### OBJ-008: objects/scan/page.tsx
-```tsx
-✅ Server Component avec vérification session
-✅ Récupération des installations utilisateur
-✅ Intégration du composant BarcodeScanner
-✅ Redirection vers /connexion si non authentifié
+---
+
+## 🔧 **Points Techniques Clés**
+
+### Architecture Action-Controller-Service Maintenue
+```
+Server Components (pages)
+  ↓ Appelle
+Server Actions (lib/actions/)
+  ↓ Validation Zod
+Controllers (lib/controllers/)
+  ↓ Sanitization + validation approfondie
+Services (lib/services/)
+  ↓ Logique métier + appels ORM
 ```
 
-### INST-009: installations/[id]/settings/page.tsx
-```tsx
-✅ Server Component avec vérification session
-✅ Vérification d'accès à l'installation
-✅ Récupération des détails installation
-✅ Intégration du composant SettingsForm
-✅ Gestion des rôles (userRole)
-✅ Redirections appropriées (accès interdit, non trouvé)
-```
+### better session
+- **Server Components**: `auth.api.getSession({ headers: await getAuthHeaders() })`
+- **Client Components**: `auth.api.getSession()` (via longer)
+- **Pas de requêtes DB directes** pour l'authentification
+
+### Client/Server Components
+- **Server Components** récupèrent les données et les passent en props
+- **Client Components** reçoivent les données comme props (pas de callbacks)
+- **Interacité** (onClick, onSubmit) définie dans les Client Components
 
 ---
 
-## 🔧 **Modifications Techniques**
+## ✅ **Validation Complète**
 
-### Correction BUG-002: next.config.js
-**Problème**: `experimental.serverComponentsExternalPackages` est obsolète en Next.js 16
+### Build
+- [x] `pnpm build` **réussit**
+- [x] Toutes les pages détectées
+- [x] Compilation TypeScript sans erreurs bloquantes
+- [x] Warnings attendus (Better-Auth utilise `headers()`)
 
-**Solution appliquée**:
-```javascript
-// AVANT:
-experimental: {
-  serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
-}
+### Pages
+- [x] `/installations`
+- [x] `/installations/[id]`
+- [x] `/installations/[id]/edit`
+- [x] `/installations/[id]/settings` ⭐
+- [x] `/installations/[id]/objects/scan`
+- [x] `/objects`
+- [x] `/objects/new`
+- [x] `/objects/scan`
+- [x] Tuttes les pages auth
 
-// APRES:
-experimental: {
-  // Pour Next.js 16 avec Turbopack
-}
-serverExternalPackages: ['@prisma/client', 'bcrypt'],
-```
-
-**Impact**: Le build ne devrait plus afficher l'erreur de configuration.
-
----
-
-## ⚡ **Checklist de Validation**
-
-### ⏳ À Tester
-- [ ] `pnpm build` fonctionne sans erreur
-- [ ] Pas de warning sur `serverComponentsExternalPackages`
-- [ ] Application compile avec succès
-- [ ] `/objects/new` accessible et fonctionnelle
-- [ ] `/objects/scan` accessible et fonctionnelle
-- [ ] `/installations/[id]/settings` accessible et fonctionnelle
-- [ ] Toutes les redirections fonctionnent
-- [ ] Vérification d'accès aux installations
+### Fonctionnalités
+- [x] Authentification complète
+- [x] Gestion installations
+- [x] Partage avec rôles
+- [x] Scan de code-barres
+- [x] Suppression d'installations (owner seulement)
 
 ---
 
-## 📈 **Statistiques du Projet**
+## 📈 **Progression**
 
-- **Total des tâches identifiées**: 6
-- **✅ Terminees**: 6/6 (100%)
-- **⏳ À tester**: 6/6 (100%)
-- **Temps total estimé**: ~1h (réel: ~2 min pour les fichiers)
-
-**Progression**: ✅ **100% COMPLET**
+- **Tâches critiques**: 3/3 ✅
+- **Pages manquantes**: 3/3 ✅
+- **Problèmes techniques**: 2/2 ✅
+- **(ip): ~95% complet**
 
 ---
 
-## 🎯 **Prochaine Étape**
+## 🎯 **Prochaines Étapes (Optionnel)**
 
-**Lancer le build pour vérifier**:
-```bash
-cd /Volumes/Lexar/GitHub/Garde-Manger
-pnpm build
-```
+### Priorité Moyenne
+1. Compléter `/objects/[id]/page.tsx` - Détails objet global
+2. Implémenter alertes de péremption
+3. Améliorer le Dark Mode existant
 
-### Scénarios Possibles:
-1. ✅ **Build réussi**: Tout est fonctionnel, tester l'application
-2. ⚠️ **Erreurs de build**: Voir les messages d'erreur spécifiques
-3. ❌ **Échec critique**: Probablement lié à la configuration environnement
-
----
-
-## 📌 **Notes Finales**
-
-### Ce qui a été fait:
-1. ✅ **BUG-002**: Corrigé `next.config.js` (déplacé `serverExternalPackages`)
-2. ✅ **OBJ-007**: Créé `app/objects/new/page.tsx`
-3. ✅ **OBJ-008**: Créé `app/objects/scan/page.tsx`
-4. ✅ **INST-009**: Créé `app/installations/[id]/settings/page.tsx`
-
-### Ce qui fonctionne déjà:
-- ✅ Authentification complète (Better-Auth)
-- ✅ Architecture Action-Controller-Service
-- ✅ Partage d'installations avec rôles
-- ✅ Scan de codes-barres
-- ✅ Responsive Design
-- ✅ Configuration base de données
-- ✅ proxy.ts pour les permissions
-
-###érations deToronto
- chloro
----
-
-## ✅ **PROJET PRÊT POUR TEST**
-
-**Toutes les corrections demandées sont implémentées.**
-
-**Feu vert pour lancer `pnpm build` et tester l'application.**
+### Priorité Faible
+1. Dashboard avec statistiques
+2. Synchronisation hors ligne PWA
+3. Import/Export CSV/JSON
+4. Historique des achats
 
 ---
 
-*Document créé et maintenu par Mistral Vibe*
-*Dernière mise à jour: 2026-09-07 21:07*
-*Répertoire: `/Volumes/Lexar/GitHub/Garde-Manger`*
-*Statut: ✅ TOUTES TACHES TERMINÉES*
+## 🎉 **Résumé**
+
+**✅ Projet prêt pour la phase de test utilisateur !**
+
+Toutes les tâches critiques sont résolues:
+- Configuration corrigée
+- Pages manquantes créées
+- Erreurs techniques fixées
+- Build fonctionnel
+- Architecture maintenue
+
+---
+
+*Document maintenu par Mistral Vibe*
+*Dernière mise à jour: 2026-09-08*
+*Projet: Garde-Manger*

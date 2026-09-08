@@ -38,10 +38,5 @@ export default async function EditInstallationPage({
     redirect("/installations");
   }
   
-  return (
-    <EditInstallationForm 
-      installation={installation}
-      onSuccess={() => redirect(`/installations/${id}`)}
-    />
-  );
+  return <EditInstallationForm installation={installation} />;
 }

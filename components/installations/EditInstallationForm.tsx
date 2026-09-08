@@ -9,10 +9,9 @@ import styles from "./EditInstallationForm.module.css";
 // Type pour les props
 interface EditInstallationFormProps {
   installation: Installation;
-  onSuccess?: () => void;
 }
 
-export default function EditInstallationForm({ installation, onSuccess }: EditInstallationFormProps) {
+export default function EditInstallationForm({ installation }: EditInstallationFormProps) {
   const router = useRouter();
   const [name, setName] = useState(installation.name);
   const [description, setDescription] = useState(installation.description || "");
@@ -38,13 +37,8 @@ export default function EditInstallationForm({ installation, onSuccess }: EditIn
         return;
       }
 
-      // Appeler le callback ou rediriger
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        router.push(`/installations/${installation.id}`);
-        router.refresh();
-      }
+      router.push(`/installations/${installation.id}`);
+      router.refresh();
     } catch (err) {
       setError("Une erreur est survenue lors de la mise à jour");
       setIsSubmitting(false);
@@ -65,10 +59,7 @@ export default function EditInstallationForm({ installation, onSuccess }: EditIn
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
-          <label
-            htmlFor="name"
-            className={styles.formLabel}
-          >
+          <label htmlFor="name" className={styles.formLabel}>
             Nom de l'installation
           </label>
           <input
@@ -83,10 +74,7 @@ export default function EditInstallationForm({ installation, onSuccess }: EditIn
         </div>
 
         <div className={styles.formGroup}>
-          <label
-            htmlFor="description"
-            className={styles.formLabel}
-          >
+          <label htmlFor="description" className={styles.formLabel}>
             Description (optionnel)
           </label>
           <textarea
@@ -102,13 +90,7 @@ export default function EditInstallationForm({ installation, onSuccess }: EditIn
         <div className={styles.buttonsContainer}>
           <button
             type="button"
-            onClick={() => {
-              if (onSuccess) {
-                router.push(`/installations/${installation.id}`);
-              } else {
-                router.push(`/installations/${installation.id}`);
-              }
-            }}
+            onClick={() => router.push(`/installations/${installation.id}`)}
             className={styles.btnCancel}
           >
             Annuler
