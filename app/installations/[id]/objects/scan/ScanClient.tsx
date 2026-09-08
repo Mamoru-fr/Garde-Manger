@@ -69,6 +69,14 @@ export default function ScanClient({ installationId, installationName }: ScanCli
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
 
+  // Logs pour le débogage des caméras
+  useEffect(() => {
+    console.log('[CAMERA DEBUG] isMobileSafari:', isMobileSafari);
+    console.log('[CAMERA DEBUG] scannerConfig.facingMode:', scannerConfig.facingMode);
+    console.log('[CAMERA DEBUG] currentDeviceId:', currentDeviceId);
+    console.log('[CAMERA DEBUG] availableCameras:', availableCameras.map(c => ({ deviceId: c.deviceId, label: c.label, facingMode: (c as any).facingMode })));
+  }, [isMobileSafari, scannerConfig.facingMode, currentDeviceId, availableCameras]);
+
   // Références
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -137,6 +145,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       let mediaStream: MediaStream | undefined;
       
       try {
+        console.log('[CAMERA DEBUG] Préparation des constraints vidéos');
         // Utiliser deviceId si disponible, sinon facingMode
         const videoConstraints: MediaTrackConstraints = {
           width: { ideal: 1280 },
@@ -145,23 +154,30 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
         // Ajouter deviceId si disponible
         if (currentDeviceId) {
+          console.log('[CAMERA DEBUG] Utilisation de currentDeviceId:', currentDeviceId);
           videoConstraints.deviceId = { exact: currentDeviceId };
         } else if (isMobileSafari) {
+          console.log('[CAMERA DEBUG] iOS/Safari : forcer facingMode:', scannerConfig.facingMode);
           // Sur iOS/Safari, forcer facingMode: 'environment' par défaut
           videoConstraints.facingMode = { ideal: scannerConfig.facingMode };
         } else {
+          console.log('[CAMERA DEBUG] Fallback vers facingMode:', scannerConfig.facingMode);
           // Fallback vers facingMode si pas de deviceId
           videoConstraints.facingMode = scannerConfig.facingMode;
         }
 
+        console.log('[CAMERA DEBUG] videoConstraints:', videoConstraints);
         mediaStream = await getUserMedia.call(navigator.mediaDevices || navigator, {
           video: videoConstraints,
         });
+        console.log('[CAMERA DEBUG] getUserMedia SUCCESS');
       } catch (mediaError) {
         const errorMessage = mediaError instanceof Error ? mediaError.message : String(mediaError);
+        console.error('[CAMERA DEBUG] getUserMedia FAILED:', errorMessage);
         
         // Si c'est une erreur de permission refusée
         if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
+          console.error('[CAMERA DEBUG] Erreur de permission');
           throw new Error(
             (typeof window !== 'undefined' && isMobileSafari)
               ? "L'accès à la caméra a été refusé. Allez dans Réglages > Garde-Manger > Caméra pour l'autoriser."
@@ -186,6 +202,8 @@ export default function ScanClient({ installationId, installationName }: ScanCli
             video: fallbackConstraints,
           });
         } catch (secondError) {
+          const secondErrorMessage = secondError instanceof Error ? secondError.message : String(secondError);
+          console.error('[CAMERA DEBUG] Fallback getUserMedia FAILED:', secondErrorMessage);
           // Si ça échoue une deuxième fois, c'est que la caméra n'est pas disponible
           throw new Error(
             (typeof window !== 'undefined' && isMobileSafari)
@@ -196,16 +214,19 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       }
 
       if (!mediaStream) {
+        console.error('[CAMERA DEBUG] mediaStream est null/undefined');
         throw new Error("Impossible de récupérer le flux vidéo.");
       }
 
+      console.log('[CAMERA DEBUG] mediaStream:', mediaStream);
       streamRef.current = mediaStream;
 
       // Assigner le stream à la vidéo
       if (videoRef.current) {
+        console.log('[CAMERA DEBUG] Assignation du stream à la vidéo');
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play().catch(e => {
-          console.error("Erreur lecture vidéo:", e);
+          console.error("[CAMERA DEBUG] Erreur lecture vidéo:", e);
         });
       }
 
@@ -217,6 +238,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
       // Démarrer la détection avec la méthode scan
       if (videoRef.current && codeReaderRef.current) {
+        console.log('[CAMERA DEBUG] Démarrage du scanner...');
         setScannedBarcode(null);
         
         scannerControlsRef.current = codeReaderRef.current.scan(
@@ -224,12 +246,12 @@ export default function ScanClient({ installationId, installationName }: ScanCli
           (result, err) => {
             if (result && result.getText() !== scannedBarcode) {
               const barcodeText = result.getText();
-              console.log(`Code detecte: ${barcodeText}`);
+              console.log(`[CAMERA DEBUG] Code détecté: ${barcodeText}`);
               stopScanner();
               handleScanComplete(barcodeText);
             }
             if (err) {
-              console.error("Erreur de decodage:", err);
+              console.error("[CAMERA DEBUG] Erreur de décodage:", err);
             }
           }
         );
@@ -237,6 +259,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('[CAMERA DEBUG] startScanner FAILED:', errorMessage);
       
       let errorType: ScannerError['type'] = 'unknown';
       
@@ -319,35 +342,49 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
   // Basculer la caméra
   const toggleCamera = useCallback(async () => {
-    // Désactiver uniquement si aucune caméra n'est disponible ET pas sur iOS
-    if (availableCameras.length === 0 && !isMobileSafari) return;
+    console.log('[CAMERA DEBUG] toggleCamera appelé');
+    console.log('[CAMERA DEBUG] availableCameras.length:', availableCameras.length);
+    console.log('[CAMERA DEBUG] isMobileSafari:', isMobileSafari);
     
+    // Désactiver uniqueness si aucune caméra n'est disponible ET pas sur iOS
+    if (availableCameras.length === 0 && !isMobileSafari) {
+      console.log('[CAMERA DEBUG] Basculement désactivé : aucune caméra ou pas sur iOS');
+      return;
+    }
+    
+    console.log('[CAMERA DEBUG] Arrêt du scanner...');
     stopScanner();
     
     // Basculer le facingMode (user ↔ environment)
     const newFacingMode = scannerConfig.facingMode === 'environment' ? 'user' : 'environment';
+    console.log('[CAMERA DEBUG] Nouveau facingMode:', newFacingMode);
     setScannerConfig(prev => ({ ...prev, facingMode: newFacingMode }));
     
     // Trouver une caméra avec le nouveau facingMode
     let nextCamera = availableCameras.find(
       (device) => (device as { facingMode?: 'user' | 'environment' }).facingMode === newFacingMode
     );
+    console.log('[CAMERA DEBUG] nextCamera avec facingMode:', nextCamera ? { deviceId: nextCamera.deviceId, facingMode: (nextCamera as any).facingMode } : null);
     
     // Si aucune caméra ne correspond, utiliser la première disponible ou forcer le facingMode
     if (!nextCamera && availableCameras.length > 0) {
       nextCamera = availableCameras.find(
         (device) => device.deviceId !== currentDeviceId
       );
+      console.log('[CAMERA DEBUG] nextCamera fallback:', nextCamera ? { deviceId: nextCamera.deviceId } : null);
     }
     
     // Mettre à jour currentDeviceId (ou le mettre à null pour forcer le facingMode)
     if (nextCamera) {
+      console.log('[CAMERA DEBUG] Mise à jour currentDeviceId:', nextCamera.deviceId);
       setCurrentDeviceId(nextCamera.deviceId);
     } else {
+      console.log('[CAMERA DEBUG] Pas de nextCamera trouvé, currentDeviceId mis à null');
       setCurrentDeviceId(null); // Fallback : pas de deviceId → on utilisera facingMode
     }
     
     // Redémarrer le scanner avec la nouvelle caméra
+    console.log('[CAMERA DEBUG] Redémarrage du scanner dans 200ms...');
     setTimeout(startScanner, 200);
   }, [stopScanner, startScanner, availableCameras, currentDeviceId, scannerConfig.facingMode, isMobileSafari]);
 
@@ -390,8 +427,11 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     // Lister les caméras disponibles au chargement
     const listCameras = async () => {
       try {
+        console.log('[CAMERA DEBUG] Appel à enumerateDevices...');
         const devices = await navigator.mediaDevices.enumerateDevices();
+        console.log('[CAMERA DEBUG] devices:', devices);
         const videoDevices = devices.filter((device) => device.kind === "videoinput");
+        console.log('[CAMERA DEBUG] videoDevices:', videoDevices);
         
         // 🔹 Ajouter facingMode personnalisé à chaque caméra
         const camerasWithFacingMode = await Promise.all(
@@ -409,36 +449,44 @@ export default function ScanClient({ installationId, installationName }: ScanCli
             // 🔹 Si on n'a pas pu deviner, essayer un stream temporaire
             if (facingMode === 'unknown' && device.deviceId) {
               try {
+                console.log('[CAMERA DEBUG] Test stream temporaire pour:', device.deviceId);
                 const testStream = await navigator.mediaDevices.getUserMedia({
                   video: { deviceId: { exact: device.deviceId } },
                 });
                 const videoTrack = testStream.getVideoTracks()[0];
                 const settings = videoTrack.getSettings();
+                console.log('[CAMERA DEBUG] settings:', settings);
                 if (settings.facingMode) {
                   facingMode = settings.facingMode as 'user' | 'environment';
+                  console.log('[CAMERA DEBUG] facingMode détecté via stream:', facingMode);
                 }
                 testStream.getTracks().forEach(track => track.stop());
               } catch (e) {
-                console.warn("Impossible de détecter facingMode pour:", device.deviceId, e);
+                console.warn("[CAMERA DEBUG] Impossible de détecter facingMode pour:", device.deviceId, e);
               }
             }
+            console.log('[CAMERA DEBUG] facingMode final pour device:', device.deviceId, '=>', facingMode);
             
             return { ...device, facingMode };
           })
         );
         
         setAvailableCameras(camerasWithFacingMode);
+        console.log('[CAMERA DEBUG] camerasWithFacingMode:', camerasWithFacingMode.map(c => ({ deviceId: c.deviceId, facingMode: (c as any).facingMode })));
         
         // 🔹 Trouver la caméra arrière par défaut
         const defaultCamera = camerasWithFacingMode.find(
           (device) => (device as { facingMode?: 'user' | 'environment' }).facingMode === 'environment'
         ) || camerasWithFacingMode[0];
         
+        console.log('[CAMERA DEBUG] defaultCamera:', defaultCamera ? { deviceId: defaultCamera.deviceId, facingMode: (defaultCamera as any).facingMode } : null);
+        
         if (defaultCamera) {
           setCurrentDeviceId(defaultCamera.deviceId);
           // Mettre à jour facingMode dans la config
           const deviceFacingMode = (defaultCamera as { facingMode?: 'user' | 'environment' }).facingMode;
           if (deviceFacingMode) {
+            console.log('[CAMERA DEBUG] Initialisation facingMode:', deviceFacingMode);
             setScannerConfig(prev => ({ ...prev, facingMode: deviceFacingMode }));
           }
         }
