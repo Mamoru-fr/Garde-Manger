@@ -5,6 +5,7 @@ import { getInstallationById, checkInstallationAccess } from "@/lib/actions/Inst
 import { InstallationRole } from "@/lib/types";
 import EditInstallationForm from "@/components/installations/EditInstallationForm";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default async function InstallationSettingsPage({
   params,
@@ -42,21 +43,29 @@ export default async function InstallationSettingsPage({
         <h1>Paramètres de l'installation: {installation.name}</h1>
         <p>Tu n'as pas la permission de modifier les paramètres de cette installation.</p>
         <Link href={`/installations/${id}`} className="btn btnSecondary">
-          Retour aux détails
+          ← Retour aux détails
         </Link>
       </main>
     );
   }
 
   return (
-    <main>
+    <main className="container">
       <nav style={{ marginBottom: '1rem' }}>
         <Link href={`/installations/${id}`} className="btn btnSecondary">
-          ← Retour à {installation.name}
+          <ArrowLeft size={16} /> Retour à {installation.name}
         </Link>
       </nav>
       
-      <EditInstallationForm installation={installation} />
+      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+          Paramètres de l'installation
+        </h1>
+        <EditInstallationForm 
+          installation={installation}
+          onSuccess={() => redirect(`/installations/${id}`)}
+        />
+      </div>
     </main>
   );
 }
