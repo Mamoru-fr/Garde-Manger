@@ -1,12 +1,14 @@
-import { auth } from "@/lib/auth/auth";
-import { getAuthHeaders } from "@/lib/utils/auth";
 import { getInstallationById } from "@/lib/actions/InstallationActions";
 import { getCategories } from "@/lib/actions/CategoryActions";
 import { getShops } from "@/lib/actions/ShopActions";
 import AddObjectClient from "./AddObjectClient";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 
-export default async function AddObjectPage({ params }: { params: { id: string } }) {
+interface AddObjectPageProps {
+  params: { id: string };
+}
+
+export default async function AddObjectPage({ params }: AddObjectPageProps) {
   const installationId = params.id;
 
   if (!installationId) {
@@ -14,13 +16,7 @@ export default async function AddObjectPage({ params }: { params: { id: string }
     notFound();
   }
 
-  const headers = await getAuthHeaders();
-  const session = await auth.api.getSession({ headers });
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
+  // Recuperer l'installation pour le titre
   const installationResult = await getInstallationById(installationId);
 
   if (!installationResult?.success) {
@@ -35,6 +31,7 @@ export default async function AddObjectPage({ params }: { params: { id: string }
     notFound();
   }
 
+  // Charger les categories et magasins pour les selects
   const [categories, shops] = await Promise.all([
     getCategories(),
     getShops(),

@@ -264,7 +264,7 @@ export default function InstallationDetailsClient({
               {userRole !== "viewer" && (
                 <>
                   <Link
-                    href={`/installations/${installationId}/objects/add`}
+                    href={`/installations/${installationId}/add`}
                     className={`${styles.btn} ${styles.btnPrimary}`}
                   >
                     <Plus size={16} />
@@ -356,7 +356,7 @@ export default function InstallationDetailsClient({
               {userRole !== "viewer" && (
                 <div className={styles.objectsActions}>
                   <Link
-                    href={`/installations/${installationId}/objects/add`}
+                    href={`/installations/${installationId}/add`}
                     className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
                   >
                     <Plus size={14} />

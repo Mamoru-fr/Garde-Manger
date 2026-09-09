@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, ChevronLeft, Barcode } from "lucide-react";
+import { searchProductInDirectory } from "@/lib/actions/DirectoryActions";
+import { addObjectToInstallation } from "@/lib/actions/ObjectActions";
 import styles from "./AddObject.module.css";
 
 // Types
@@ -23,7 +25,7 @@ interface AddObjectClientProps {
   shops: Shop[];
 }
 
-// Donn\u001ees du formulaire
+// Donnees du formulaire
 interface FormData {
   barcode: string;
   name: string;
@@ -72,18 +74,17 @@ export default function AddObjectClient({
 
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/directory/search?barcode=${encodeURIComponent(barcode)}`);
-        if (!response.ok) {
-          console.error("Erreur lors de la recherche");
-          return;
-        }
-        const data = await response.json();
-        if (data.success && data.item) {
+        const result = await searchProductInDirectory(barcode);
+        if (result.success && result.data) {
+          const product = result.data;
           setFormData((prev) => ({
             ...prev,
-            name: data.item.name || prev.name,
-            brand: data.item.brand || prev.brand,
-            category_id: data.item.category_id || prev.category_id,
+            name: product.name || prev.name,
+            brand: product.brand || prev.brand,
+            // Trouver la categorie correspondante dans la liste des categories
+            category_id: product.category
+              ? categories.find(c => c.name.toLowerCase() === product.category?.toLowerCase())?.id || prev.category_id
+              : prev.category_id,
           }));
         }
       } catch (err) {
@@ -92,10 +93,10 @@ export default function AddObjectClient({
         setIsSearching(false);
       }
     },
-    []
+    [categories]
   );
 
-  // G\u001er les changements des inputs
+  // Gerer les changements des inputs
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const { name, value, type } = e.target;
@@ -104,7 +105,7 @@ export default function AddObjectClient({
         [name]: type === "number" ? parseInt(value) || 0 : value,
       }));
 
-      // Si le champ modifi\u001e est le code-barres, lancer une recherche
+      // Si le champ modifié est le code-barres, lancer une recherche
       if (name === "barcode" && value.length >= 3) {
         searchByBarcode(value);
       }
@@ -128,30 +129,51 @@ export default function AddObjectClient({
       }
 
       if (formData.quantity <= 0) {
-        setError("La quantit\u0000e doit \u001atre sup\u001erieure \u0000 0.");
+        setError("La quantite doit etre superieure a 0.");
         setIsSubmitting(false);
         return;
       }
 
       try {
-        const response = await fetch("/api/objects", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            installationId,
-            ...formData,
-            price: formData.price ? parseFloat(formData.price.replace(",", ".")) : undefined,
-          }),
-        });
+        // Convertir les donnees du formulaire en FormData
+        const formDataForAction = new FormData();
+        formDataForAction.append('installationId', installationId);
+        formDataForAction.append('objectDirectoryId', formData.barcode || '');
+        formDataForAction.append('name', formData.name);
+        formDataForAction.append('quantity', formData.quantity.toString());
+        
+        if (formData.category_id) {
+          formDataForAction.append('categoryId', formData.category_id);
+        }
+        if (formData.brand) {
+          formDataForAction.append('brand', formData.brand);
+        }
+        if (formData.expiry_date) {
+          formDataForAction.append('expiryDate', formData.expiry_date);
+        }
+        if (formData.location) {
+          formDataForAction.append('location', formData.location);
+        }
+        if (formData.lot_number) {
+          formDataForAction.append('lotNumber', formData.lot_number);
+        }
+        if (formData.price) {
+          formDataForAction.append('price', formData.price.replace(",", "."));
+        }
+        if (formData.shop_id) {
+          formDataForAction.append('shopId', formData.shop_id);
+        }
+        if (formData.note) {
+          formDataForAction.append('note', formData.note);
+        }
+        
+        const result = await addObjectToInstallation(null, formDataForAction);
 
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || "Erreur lors de l'ajout de l'objet");
+        if (!result.success) {
+          throw new Error(result.error || "Erreur lors de l'ajout de l'objet");
         }
 
-        setSuccess("Objet ajout\u001e avec succ\u0000s !");
+        setSuccess("Objet ajoute avec succes !");
         setTimeout(() => {
           router.push(`/installations/${installationId}?add=success`);
         }, 1500);
@@ -169,7 +191,7 @@ export default function AddObjectClient({
       <header className={styles.header}>
         <h1 className={styles.title}>
           <ChevronLeft size={24} />
-          Ajouter un objet \u0000 {installationName}
+          Ajouter un objet a {installationName}
         </h1>
       </header>
 
@@ -214,11 +236,11 @@ export default function AddObjectClient({
           />
         </div>
 
-        {/* Quantit\u001e et Cat\u001egorie */}
+        {/* Quantite et Categorie */}
         <div className={styles.formRow}>
           <div className={styles.formGroupHalf}>
             <label htmlFor="quantity" className={styles.label}>
-              Quantit\u001e *
+              Quantite *
             </label>
             <input
               type="number"
@@ -233,7 +255,7 @@ export default function AddObjectClient({
           </div>
           <div className={styles.formGroupHalf}>
             <label htmlFor="category_id" className={styles.label}>
-              Cat\u001egorie
+              Categorie
             </label>
             <select
               id="category_id"
@@ -242,7 +264,7 @@ export default function AddObjectClient({
               onChange={handleChange}
               className={styles.select}
             >
-              <option value="">-- Aucune cat\u001egorie --</option>
+              <option value="">-- Aucune categorie --</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -252,7 +274,7 @@ export default function AddObjectClient({
           </div>
         </div>
 
-        {/* Marque et Date de p\u001eremption */}
+        {/* Marque et Date de peremption */}
         <div className={styles.formRow}>
           <div className={styles.formGroupHalf}>
             <label htmlFor="brand" className={styles.label}>
@@ -270,7 +292,7 @@ export default function AddObjectClient({
           </div>
           <div className={styles.formGroupHalf}>
             <label htmlFor="expiry_date" className={styles.label}>
-              Date de p\u001eremption
+              Date de peremption
             </label>
             <input
               type="date"
@@ -300,7 +322,7 @@ export default function AddObjectClient({
           </div>
           <div className={styles.formGroupHalf}>
             <label htmlFor="price" className={styles.label}>
-              Prix (\u20ac)
+              Prix (euro)
             </label>
             <input
               type="text"
@@ -315,11 +337,11 @@ export default function AddObjectClient({
           </div>
         </div>
 
-        {/* Num\u001ero de lot et Emplacement */}
+        {/* Numero de lot et Emplacement */}
         <div className={styles.formRow}>
           <div className={styles.formGroupHalf}>
             <label htmlFor="lot_number" className={styles.label}>
-              Num\u001ero de lot
+              Numero de lot
             </label>
             <input
               type="text"
@@ -327,7 +349,7 @@ export default function AddObjectClient({
               name="lot_number"
               value={formData.lot_number || ""}
               onChange={handleChange}
-              placeholder="Lot N\u001b..."
+              placeholder="Lot N..."
               className={styles.input}
             />
           </div>
@@ -381,7 +403,7 @@ export default function AddObjectClient({
             name="note"
             value={formData.note || ""}
             onChange={handleChange}
-            placeholder="Ex: Achet\u001e en promo, \u0000 consommer rapidement..."
+            placeholder="Ex: Achete en promo, a consommer rapidement..."
             className={styles.textarea}
             rows={3}
           />
@@ -408,7 +430,7 @@ export default function AddObjectClient({
             ) : (
               <>
                 <Check size={16} />
-                Ajouter l\'objet
+                Ajouter l'objet
               </>
             )}
           </button>
