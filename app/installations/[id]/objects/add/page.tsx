@@ -4,34 +4,37 @@ import { getInstallationById } from "@/lib/actions/InstallationActions";
 import { getCategories } from "@/lib/actions/CategoryActions";
 import { getShops } from "@/lib/actions/ShopActions";
 import AddObjectClient from "./AddObjectClient";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 
 export default async function AddObjectPage({ params }: { params: { id: string } }) {
-  // Recuperer la session
+  const installationId = params.id;
+
+  if (!installationId) {
+    console.error("Erreur: ID installation manquant");
+    notFound();
+  }
+
   const headers = await getAuthHeaders();
   const session = await auth.api.getSession({ headers });
-  
+
   if (!session?.user) {
     redirect("/login");
   }
 
-  // Recuperer l'installation pour le titre
-  const installationResult = await getInstallationById(params.id);
-  
-  // Verifier la structure de la reponse
+  const installationResult = await getInstallationById(installationId);
+
   if (!installationResult?.success) {
-    console.error("Erreur lors de la recuperation de l'installation:", installationResult?.error);
-    throw new Error("Installation non trouvee : " + (installationResult?.error || "ID invalide"));
-  }
-  
-  const installation = installationResult.data?.installation;
-  
-  if (!installation) {
-    console.error("Installation introuvable dans la reponse:", installationResult);
-    throw new Error("Installation non trouvee : donnees manquantes");
+    console.error("Erreur lors de la recuperation de l installation:", installationResult?.error);
+    notFound();
   }
 
-  // Charger les categories et magasins pour les selects
+  const installation = installationResult.data?.installation;
+
+  if (!installation) {
+    console.error("Installation introuvable dans la reponse:", installationResult);
+    notFound();
+  }
+
   const [categories, shops] = await Promise.all([
     getCategories(),
     getShops(),
@@ -40,7 +43,7 @@ export default async function AddObjectPage({ params }: { params: { id: string }
   return (
     <main>
       <AddObjectClient
-        installationId={params.id}
+        installationId={installationId}
         installationName={installation.name}
         categories={categories || []}
         shops={shops || []}
