@@ -1,28 +1,26 @@
-"use client";
-
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "@/context/SessionProvider";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import AuthButtons from "@/components/auth-buttons";
+import { getCurrentSession } from "@/lib/utils/auth";
 import styles from "./Home.module.css";
+import GetStartedButton from "@/components/GetStartedButton";
 
-// Page d'accueil - côté client pour utiliser AuthButtons
-export default function HomePage() {
-  const { user } = useSession();
-  const router = useRouter();
-
-  // Rediriger vers /installations si connecté
-  useEffect(() => {
-    if (user) {
-      console.log("✅ [CLIENT /] Utilisateur connecté, redirection vers /installations");
-      router.push("/installations");
-    }
-  }, [user, router]);
-
-  // Si pas connecté, afficher la page d'accueil
-  if (user) return null; // En attente de redirection
-
+// Page d'accueil - côté serveur pour la vérification de la session
+export default async function HomePage() {
+  // Vérifier la session côté serveur
+  const session = await getCurrentSession();
+  
+  console.log("🔐 [SERVER /] Vérification de la session:", {
+    hasUser: !!session?.user,
+    userEmail: session?.user?.email
+  });
+  
+  // Si l'utilisateur est connecté, rediriger vers /installations
+  if (session?.user) {
+    console.log("✅ [SERVER /] Utilisateur connecté, redirection vers /installations");
+    redirect("/installations");
+  }
+  
+  // Sinon, afficher la page d'accueil pour les utilisateurs non connectés
   return (
     <main className={styles.container}>
       <div className={styles.hero}>
@@ -43,7 +41,13 @@ export default function HomePage() {
         </p>
         
         <div className={styles.ctaContainer}>
-          <AuthButtons />
+          <GetStartedButton />
+          <Link
+            href="/inscription"
+            className={styles.ctaSecondary}
+          >
+            Créer un compte
+          </Link>
         </div>
       </div>
       
