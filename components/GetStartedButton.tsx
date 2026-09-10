@@ -1,38 +1,35 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useSession } from "@/context/SessionProvider";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentSession } from "@/lib/utils/auth";
 import styles from "@/app/Home.module.css";
 
 /**
  * GetStartedButton - Bouton "Commencer" qui redirige intelligemment :
  * - Vers /installations si connecté (cookie Better Auth valide)
  * - Vers /connexion si déconnecté (cookie absent/expiré)
+ * 
+ * Utilise getCurrentSession() côté serveur pour éviter les problèmes de sync client/serveur.
  */
-export default function GetStartedButton() {
-  const { user } = useSession();
-  const router = useRouter();
+export default async function GetStartedButton() {
+  const session = await getCurrentSession();
+  const isConnected = !!session?.user;
 
-  const handleClick = () => {
-    console.log("🔐 [GetStartedButton] Clic sur le bouton. État de la session:", {
-      hasUser: !!user,
-      userEmail: user?.email,
-    });
+  console.log("🔐 [GetStartedButton - SERVER] Session remise à jour:", {
+    hasUser: isConnected,
+    userEmail: session?.user?.email,
+  });
 
-    if (user) {
-      console.log("✅ [GetStartedButton] Cookie valide → redirection vers /installations");
-      router.push("/installations");
-    } else {
-      console.log("❌ [GetStartedButton] Pas de cookie ou expiré → redirection vers /connexion");
-      router.push("/connexion");
-    }
-  };
+  // Redirige directement si connecté (pour éviter d'afficher le bouton)
+  if (isConnected) {
+    console.log("✅ [GetStartedButton - SERVER] Cookie valide → redirection vers /installations");
+    redirect("/installations");
+  }
 
-  console.log("🔄 [GetStartedButton] Rendering. Session active:", !!user);
+  console.log("❌ [GetStartedButton - SERVER] Pas de cookie → affichage du bouton vers /connexion");
 
   return (
-    <button onClick={handleClick} className={styles.ctaPrimary}>
+    <Link href="/connexion" className={styles.ctaPrimary}>
       Commencer
-    </button>
+    </Link>
   );
 }
