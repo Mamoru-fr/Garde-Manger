@@ -5,11 +5,12 @@ import AddObjectClient from "./AddObjectClient";
 import { notFound } from "next/navigation";
 
 interface AddObjectPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function AddObjectPage({ params }: AddObjectPageProps) {
-  const installationId = params.id;
+  const { id } = await params;
+  const installationId = id;
 
   if (!installationId) {
     console.error("Erreur: ID installation manquant");
