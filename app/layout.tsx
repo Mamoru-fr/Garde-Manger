@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
 import { ServerSessionProvider } from "@/lib/components/ServerSessionProvider";
+import PWADetector from "@/components/pwa-detector";
 
 // Police Inter (moderne et lisible)
 const inter = Inter({ subsets: ["latin"] });
@@ -83,6 +84,7 @@ export default function RootLayout({
           {children}
         </ServerSessionProvider>
         <ServiceWorkerRegistrar />
+        <PWADetector />
       </body>
     </html>
   );

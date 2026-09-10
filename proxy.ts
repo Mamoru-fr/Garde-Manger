@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isPWARequest, getSessionMaxAge } from './lib/utils/pwa';
+
+// 🔧 Nom du cookie de session Better Auth (doit correspondre à ta config)
+const BETTER_AUTH_SESSION_COOKIE = "better-auth.session_token";
 
 /**
- * Proxy pour configurer les headers de permissions
- * Nécessaire pour l'accès à la caméra, microphone, et géolocalisation dans Next.js 16+
+ * Proxy pour configurer les headers de permissions et gérer les sessions PWA
+ * Nécessaire pour :
+ * - l'accès à la caméra, microphone, et géolocalisation dans Next.js 16+
+ * - la gestion des cookies de session longue durée pour les PWAs
  * 
  * @see https://nextjs.org/docs/app/building-your-application/routing/middleware
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
@@ -11,6 +17,34 @@ import type { NextRequest } from 'next/server';
 export default function proxy(request: NextRequest) {
   // Clone la réponse pour pouvoir modifier les headers
   const response = NextResponse.next();
+
+  // 🔍 1. Détection PWA (via headers OU cookie client)
+  const isPWA = isPWARequest(request) || 
+               request.cookies.has("x-pwa-detected");
+
+  // ✅ 2. Si c'est une PWA ET qu'on a un cookie de session Better Auth, on le prolonge
+  if (isPWA) {
+    const sessionCookie = request.cookies.get(BETTER_AUTH_SESSION_COOKIE);
+    if (sessionCookie) {
+      // 🔧 Durée prolongée pour les PWAs (1 an)
+      const maxAge = getSessionMaxAge(true);
+      
+      response.cookies.set({
+        name: BETTER_AUTH_SESSION_COOKIE,
+        value: sessionCookie.value,
+        maxAge: maxAge,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        sameSite: "lax",
+        // Préfixe __Secure- en production pour HTTPS
+        ...(process.env.NODE_ENV === "production" && { prefix: "__Secure-" }),
+      });
+      
+      // ⚠️ Header pour débogage
+      response.headers.set("x-pwa-session-extended", "true");
+    }
+  }
 
   // Configurer le Permissions-Policy header
   // Cela permet à l'application d'accéder à :
