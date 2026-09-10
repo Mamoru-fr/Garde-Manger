@@ -573,3 +573,11 @@
 .actionButton:hover {
   color: #6a350f;
 }
+
+/* Style pour la grille des objets (cartes) */
+.objectsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}

@@ -21,12 +21,14 @@ interface StockClientProps {
   };
   installationId?: string;
   installationName?: string;
+  forceCardView?: boolean; // Force l'affichage en cartes (ex: pour la page /stock)
 }
 
 export default function StockClient({
   initialData,
   installationId,
   installationName,
+  forceCardView = false,
 }: StockClientProps) {
   const [items, setItems] = useState<StockItemWithExpiryStatus[]>([]);
   const [stats, setStats] = useState<StockStats | null>(null);
@@ -288,6 +290,7 @@ export default function StockClient({
           <StockList
             items={items}
             onDetailsClick={handleItemClick}
+            forceCardView={forceCardView}
           />
         )}
       </main>
