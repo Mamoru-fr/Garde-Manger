@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
 import { ServerSessionProvider } from "@/lib/components/ServerSessionProvider";
 import PWADetector from "@/components/pwa-detector";
+import Header from "@/components/layout/Header";
 
 // Police Inter (moderne et lisible)
 const inter = Inter({ subsets: ["latin"] });
@@ -81,6 +82,7 @@ export default function RootLayout({
     <html lang="fr">
       <body className={inter.className}>
         <ServerSessionProvider>
+          <Header />
           {children}
         </ServerSessionProvider>
         <ServiceWorkerRegistrar />
