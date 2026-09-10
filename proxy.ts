@@ -4,6 +4,7 @@ import { isPWARequest, getSessionMaxAge } from './lib/utils/pwa';
 
 // 🔧 Nom du cookie de session Better Auth (doit correspondre à ta config)
 const BETTER_AUTH_SESSION_COOKIE = "better-auth.session_token";
+const BETTER_AUTH_SECURE_COOKIE = "__Secure-better-auth.session_token";
 
 /**
  * Proxy pour configurer les headers de permissions et gérer les sessions PWA
@@ -24,21 +25,25 @@ export default function proxy(request: NextRequest) {
 
   // ✅ 2. Si c'est une PWA ET qu'on a un cookie de session Better Auth, on le prolonge
   if (isPWA) {
-    const sessionCookie = request.cookies.get(BETTER_AUTH_SESSION_COOKIE);
+    // 🔍 Vérifie les deux noms de cookie possibles (avec/sans préfixe __Secure-)
+    const sessionCookie = request.cookies.get(BETTER_AUTH_SESSION_COOKIE) ||
+                         request.cookies.get(BETTER_AUTH_SECURE_COOKIE);
+    
     if (sessionCookie) {
       // 🔧 Durée prolongée pour les PWAs (1 an)
       const maxAge = getSessionMaxAge(true);
       
+      // 🔧 Utilise le même nom de cookie que celui trouvé
+      const sessionCookieName = sessionCookie.name;
+      
       response.cookies.set({
-        name: BETTER_AUTH_SESSION_COOKIE,
+        name: sessionCookieName,
         value: sessionCookie.value,
         maxAge: maxAge,
         path: "/",
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
         sameSite: "lax",
-        // Préfixe __Secure- en production pour HTTPS
-        ...(process.env.NODE_ENV === "production" && { prefix: "__Secure-" }),
       });
       
       // ⚠️ Header pour débogage
