@@ -65,9 +65,12 @@ export const auth = betterAuth({
     },
   },
 
-  // Sessions - Configuration stabilisée pour PWA/Web
+  // Sessions - Configuration adaptative pour PWA/Web
+  // ⚠️ NOTE: maxAge et updateAge sont gérés dynamiquement par le middleware pour les PWAs
+  //         En PWA: 1 an | En Web: 30 jours (géré par middleware.ts)
   session: {
     cookieName: "better-auth.session_token",
+    // ✅ Durée par défaut (30 jours) - sera prolongée à 1 an pour les PWAs via middleware
     maxAge: 86400 * 30, // 30 jours
     updateAge: 86400 * 15, // ✅ 15 jours (rafraîchit le cookie toutes les 2 semaines)
     // ⭐ Configuration adaptée pour PWA et développement local ⭐

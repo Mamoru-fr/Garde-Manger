@@ -1,0 +1,70 @@
+/* Styles pour les boutons d'authentification */
+
+/* Bouton principal (ex: Se connecter, Commencer) */
+.authButtonPrimary {
+  display: inline-block;
+  padding: 1rem 2.5rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  background-color: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(74, 55, 40, 0.1);
+}
+
+.authButtonPrimary:hover {
+  background-color: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+/* Bouton secondaires (ex: S'inscrire, Mon profil) */
+.authButtonSecondary {
+  display: inline-block;
+  padding: 1rem 2.5rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  background-color: var(--accent-light);
+  color: var(--primary);
+}
+
+.authButtonSecondary:hover {
+  background-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* Bouton de déconnexion (rouge) */
+.authButtonLogout {
+  display: inline-block;
+  padding: 1rem 2.5rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  background-color: #cf3030; /* Rouge */
+  color: white;
+}
+
+.authButtonLogout:hover {
+  background-color: #a52020; /* Rouge foncé */
+  transform: translateY(-2px);
+}
+
+/* Conteneur des boutons */
+.authButtonsContainer {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}

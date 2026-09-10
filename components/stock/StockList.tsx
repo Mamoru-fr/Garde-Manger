@@ -14,6 +14,7 @@ interface StockListProps {
   onDetailsClick: (item: StockItemWithExpiryStatus) => void;
   onEdit?: (item: StockItemWithExpiryStatus) => void;
   onDelete?: (item: StockItemWithExpiryStatus) => void;
+  forceCardView?: boolean; // Force l'affichage en cartes (ex: pour la page /stock)
 }
 
 export default function StockList({
@@ -23,6 +24,7 @@ export default function StockList({
   onDetailsClick,
   onEdit,
   onDelete,
+  forceCardView = false,
 }: StockListProps) {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -56,8 +58,8 @@ export default function StockList({
     );
   }
 
-  // Mobile : affichage en cartes
-  if (isMobile) {
+  //Mobile OU forceCardView : affichage en cartes
+  if (isMobile || forceCardView) {
     return (
       <div className={styles.listContainer}>
         <div className={styles.grid}>

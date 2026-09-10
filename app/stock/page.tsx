@@ -20,10 +20,10 @@ export default async function GlobalStockPage() {
     sortOrder: "asc",
   });
 
-  // Formater les données pour le client
+  // Formater les données pour le client (limité à 5 items)
   const initialData = initialDataResult.success
     ? {
-        items: initialDataResult.data || [],
+        items: (initialDataResult.data || []).slice(0, 5), // Limite à 5 items
         stats: initialDataResult.stats || null,
         installations: initialDataResult.data
           ? initialDataResult.data.reduce(
@@ -56,5 +56,5 @@ export default async function GlobalStockPage() {
         categories: [],
       };
 
-  return <StockClient initialData={initialData} />;
+  return <StockClient initialData={initialData} forceCardView />;
 }

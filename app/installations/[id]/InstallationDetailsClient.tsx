@@ -7,6 +7,8 @@ import { ArrowLeft, Package, Users, Calendar, MapPin, Settings, Plus, Trash2, Ed
 import { InstallationRole } from "@/lib/types";
 import styles from "./InstallationDetails.module.css";
 import MembersModal from "./MembersModal";
+import StockItemCard from "@/components/stock/StockItemCard";
+import stockCardStyles from "@/components/stock/StockItemCard.module.css";
 
 // Types pour les props
 interface Installation {
@@ -264,7 +266,7 @@ export default function InstallationDetailsClient({
               {userRole !== "viewer" && (
                 <>
                   <Link
-                    href={`/installations/${installationId}/objects/add`}
+                    href={`/installations/${installationId}/add`}
                     className={`${styles.btn} ${styles.btnPrimary}`}
                   >
                     <Plus size={16} />
@@ -281,69 +283,58 @@ export default function InstallationDetailsClient({
             </div>
           </div>
           
-          {/* ✅ Toujours afficher le tableau (même vide) pour éviter les problèmes de rendu */}
-          <table className={styles.tableContainer}>
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Quantité</th>
-                <th>Emplacement</th>
-                <th>Péremption</th>
-                <th className={styles.tableActions}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {objects.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className={styles.emptyState}>
-                    {installation?.objectCount === 0
-                      ? "Aucun objet dans cette installation"
-                      : "Aucun objet trouvé"
-                    }
-                  </td>
-                </tr>
-              ) : (
-                // ✅ Afficher chaque objet dans une ligne du tableau
-                objects.map((obj) => (
-                  <tr key={obj.id}>
-                    <td>
-                      <div className={styles.objectNameWrapper}>
-                        {obj.name}
-                        {obj.brand && (
-                          <span className={styles.objectBrand}> ({obj.brand})</span>
-                        )}
-                        {obj.isReadOnly && (
-                          <span className={styles.readOnlyToken} title="Données verrouillées (OpenFoodFacts)">
-                            🔒
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{obj.quantity}</td>
-                    <td>{obj.location || "-"}</td>
-                    <td>
-                      {obj.expiryDate
-                        ? formatDate(obj.expiryDate)
-                        : "-"
-                      }
-                    </td>
-                    <td className={styles.tableActions}>
-                      {/* Actions pour chaque objet (À implémenter plus tard) */}
-                      {userRole !== "viewer" && (
-                        <Link
-                          href={`/installations/${installationId}/objects/${obj.id}/edit`}
-                          className={styles.actionButton}
-                          title="Modifier"
-                        >
-                          ✏️
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          {/* Affichage en cartes pour chaque objet */}
+          <div className={styles.objectsGrid}>
+            {objects.length === 0 ? (
+              <div className={stockCardStyles.emptyState}>
+                {installation?.objectCount === 0
+                  ? "Aucun objet dans cette installation"
+                  : "Aucun objet trouvé"
+                }
+              </div>
+            ) : (
+              objects.map((obj) => (
+                // Converter obj en StockItemWithExpiryStatus pour StockItemCard
+                <StockItemCard
+                  key={obj.id}
+                  item={{
+                    id: obj.id,
+                    objectDirectoryId: obj.objectDirectoryId,
+                    barcode: "", // ✅ Ajouté (non disponible dans InstallationObject)
+                    name: obj.name,
+                    brand: obj.brand || undefined,
+                    category: obj.category || undefined,
+                    description: obj.description || undefined,
+                    quantity: obj.quantity,
+                    unit: undefined,
+                    location: obj.location || undefined,
+                    purchaseDate: null,
+                    expiryDate: obj.expiryDate || null,
+                    lotNumber: undefined,
+                    price: null,
+                    notes: undefined,
+                    nutriscore: obj.nutriscore || undefined,
+                    imageUrl: obj.imageUrl || undefined,
+                    shopId: undefined,
+                    shopName: undefined,
+                    installationId: installationId,
+                    installationName: installation?.name || "",
+                    isReadOnly: obj.isReadOnly || false,
+                    hasEditPermission: userRole !== "viewer", // ✅ Ajouté (basé sur le rôle)
+                    isExpired: obj.expiryDate ? new Date(obj.expiryDate) < new Date() : false,
+                    expiryStatus: obj.expiryDate ? (
+                      new Date(obj.expiryDate) < new Date() ? "expired" : 
+                      new Date(obj.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? "warning" : "normal"
+                    ) : "no_date",
+                    daysUntilExpiry: obj.expiryDate ? Math.floor((new Date(obj.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
+                    createdAt: new Date(), // ✅ Ajouté (valeur par défaut)
+                    updatedAt: new Date(), // ✅ Ajouté (valeur par défaut)
+                  }}
+                  onDetailsClick={() => {}}
+                />
+              ))
+            )}
+          </div>
           
           {/* Afficher lemptyState UNIQUEMENT si objectCount === 0 ET objects.length === 0 */}
           {installation?.objectCount === 0 && objects.length === 0 && (
@@ -356,7 +347,7 @@ export default function InstallationDetailsClient({
               {userRole !== "viewer" && (
                 <div className={styles.objectsActions}>
                   <Link
-                    href={`/installations/${installationId}/objects/add`}
+                    href={`/installations/${installationId}/add`}
                     className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
                   >
                     <Plus size={14} />

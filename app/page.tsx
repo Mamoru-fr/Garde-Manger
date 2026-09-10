@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentSession } from "@/lib/utils/auth";
 import styles from "./Home.module.css";
+import GetStartedButton from "@/components/GetStartedButton";
 
 // Page d'accueil - côté serveur pour la vérification de la session
 export default async function HomePage() {
@@ -40,12 +41,7 @@ export default async function HomePage() {
         </p>
         
         <div className={styles.ctaContainer}>
-          <Link
-            href="/connexion"
-            className={styles.ctaPrimary}
-          >
-            Commencer
-          </Link>
+          <GetStartedButton />
           <Link
             href="/inscription"
             className={styles.ctaSecondary}
