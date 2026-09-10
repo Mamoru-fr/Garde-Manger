@@ -1,32 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentSession } from "@/lib/utils/auth";
 import styles from "@/app/Home.module.css";
 
 /**
- * GetStartedButton - Bouton "Commencer" qui redirige intelligemment :
- * - Vers /installations si connecté (cookie Better Auth valide)
- * - Vers /connexion si déconnecté (cookie absent/expiré)
+ * GetStartedButton - Bouton "Commencer" pour les utilisateurs non connectés.
  * 
- * Utilise getCurrentSession() côté serveur pour éviter les problèmes de sync client/serveur.
+ * Note: La page / redirige déjà automatiquement les utilisateurs connectés vers /installations.
+ * Donc ce bouton ne s'affiche que pour les non-connectés et mène toujours vers /connexion.
  */
-export default async function GetStartedButton() {
-  const session = await getCurrentSession();
-  const isConnected = !!session?.user;
-
-  console.log("🔐 [GetStartedButton - SERVER] Session remise à jour:", {
-    hasUser: isConnected,
-    userEmail: session?.user?.email,
-  });
-
-  // Redirige directement si connecté (pour éviter d'afficher le bouton)
-  if (isConnected) {
-    console.log("✅ [GetStartedButton - SERVER] Cookie valide → redirection vers /installations");
-    redirect("/installations");
-  }
-
-  console.log("❌ [GetStartedButton - SERVER] Pas de cookie → affichage du bouton vers /connexion");
-
+export default function GetStartedButton() {
   return (
     <Link href="/connexion" className={styles.ctaPrimary}>
       Commencer
