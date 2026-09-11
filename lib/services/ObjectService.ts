@@ -1423,7 +1423,7 @@ export async function fetchNutritionalDataService(
 }>> {
   try {
     // Appel à l'API OpenFoodFacts (gratuite, pas besoin de clé API)
-    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const response = await fetch(`https://api.openfoodfacts.org/api/v3/product/${barcode}.json`);
     const data = await response.json();
 
     if (!data.product) {
