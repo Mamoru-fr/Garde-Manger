@@ -50,6 +50,10 @@ export default function ScanDetailsForm({
     lotNumber: "",
     price: "",
     notes: "",
+    // Champs pour l'objet
+    name: directoryItem?.name || "",
+    brand: directoryItem?.brand || "",
+    category: directoryItem?.category || "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +66,7 @@ export default function ScanDetailsForm({
     }
   }, [formData.location]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     setFormData(prev => ({
@@ -118,10 +122,10 @@ export default function ScanDetailsForm({
             barcode,
             formData.quantity,
             {
-              name: directoryItem?.name || undefined,
-              category: directoryItem?.category || undefined,
+              name: formData.name || undefined,
+              category: formData.category || undefined,
               description: directoryItem?.description || undefined,
-              brand: directoryItem?.brand || undefined,
+              brand: formData.brand || undefined,
               expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
               location: formData.location?.trim() || undefined,
             }
@@ -196,36 +200,115 @@ export default function ScanDetailsForm({
           </div>
           
           <div className={styles.productInfo}>
-            <div className={styles.productNameRow}>
-              <h2 id="scan-details-title" className={styles.productName}>
-                {directoryItem?.name || "Objet inconnu"}
-              </h2>
-              {directoryItem?.nutriscore && (
-                <NutriscoreBadge score={directoryItem.nutriscore} size="small" />
-              )}
-            </div>
-            
-            {directoryItem?.brand && (
-              <p className={styles.productBrand}>
-                <strong>Marque:</strong> {directoryItem.brand}
-              </p>
-            )}
-            {directoryItem?.category && (
-              <p className={styles.productCategory}>
-                <strong>Catégorie:</strong> {directoryItem.category}
-              </p>
-            )}
-            {directoryItem?.openFoodFactsId && (
-              <p className={styles.productOFF}>
-                <a 
-                  href={`https://world.openfoodfacts.org/product/${directoryItem.openFoodFactsId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.offLink}
-                >
-                  Voir sur OpenFoodFacts
-                </a>
-              </p>
+            {directoryItem?.isReadOnly ? (
+              // Affichage en lecture seule pour les objets OpenFoodFacts
+              <>
+                <div className={styles.productNameRow}>
+                  <h2 id="scan-details-title" className={styles.productName}>
+                    {directoryItem?.name || "Objet inconnu"}
+                  </h2>
+                  {directoryItem?.nutriscore && (
+                    <NutriscoreBadge score={directoryItem.nutriscore} size="small" />
+                  )}
+                </div>
+                
+                {directoryItem?.brand && (
+                  <p className={styles.productBrand}>
+                    <strong>Marque:</strong> {directoryItem.brand}
+                  </p>
+                )}
+                {directoryItem?.category && (
+                  <p className={styles.productCategory}>
+                    <strong>Catégorie:</strong> {directoryItem.category}
+                  </p>
+                )}
+                {directoryItem?.openFoodFactsId && (
+                  <p className={styles.productOFF}>
+                    <a 
+                      href={`https://world.openfoodfacts.org/product/${directoryItem.openFoodFactsId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.offLink}
+                    >
+                      Voir sur OpenFoodFacts
+                    </a>
+                  </p>
+                )}
+              </>
+            ) : (
+              // Champs éditables pour les objets modifiables
+              <div style={{ width: '100%' }}>
+                <div className={styles.productNameRow}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label htmlFor="name" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.25rem' }}>
+                      Nom *
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className={styles.formInput}
+                      placeholder="Nom du produit"
+                      required
+                      style={{ width: '100%', marginBottom: '0.5rem' }}
+                    />
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <div>
+                    <label htmlFor="brand" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.25rem' }}>
+                      Marque
+                    </label>
+                    <input
+                      type="text"
+                      id="brand"
+                      name="brand"
+                      value={formData.brand}
+                      onChange={handleChange}
+                      className={styles.formInput}
+                      placeholder="Marque"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="category" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: '0.25rem' }}>
+                      Catégorie
+                    </label>
+                    <select
+                      id="category"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      className={styles.formInput}
+                      style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                    >
+                      <option value="">Sélectionnez une catégorie</option>
+                      <option value="Produits alimentaires">Produits alimentaires</option>
+                      <option value="Boissons">Boissons</option>
+                      <option value="Produits d'hygiène">Produits d'hygiène</option>
+                      <option value="Produits ménagers">Produits ménagers</option>
+                      <option value="Bricolage">Bricolage</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {directoryItem?.openFoodFactsId && (
+                  <p className={styles.productOFF}>
+                    <a 
+                      href={`https://world.openfoodfacts.org/product/${directoryItem.openFoodFactsId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.offLink}
+                    >
+                      Voir sur OpenFoodFacts
+                    </a>
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -245,6 +328,22 @@ export default function ScanDetailsForm({
           )}
           <span className={styles.barcodeInfo}>Code: <code>{barcode}</code></span>
         </div>
+        
+        {/* Message d'édition */}
+        {!directoryItem?.isReadOnly && (
+          <div style={{
+            textAlign: 'center',
+            padding: '0.75rem 1.5rem',
+            background: 'var(--bg-secondary, #f8fafc)',
+            border: '1px solid var(--border-color, #e2e8f0)',
+            borderRadius: '8px',
+            margin: '0 1.5rem 1rem',
+            color: 'var(--text-secondary, #64748b)',
+            fontSize: '0.875rem'
+          }}>
+            ✏️ Personnalisez le nom, la marque et la catégorie ci-dessus
+          </div>
+        )}
 
         {/* Erreur */}
         {error && (
