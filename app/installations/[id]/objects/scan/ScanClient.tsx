@@ -86,18 +86,6 @@ export default function ScanClient({installationId, installationName}: ScanClien
   // État du formulaire de détails
   const [showDetailsForm, setShowDetailsForm] = useState(false);
 
-  // Dans ScanClient.tsx
-  useEffect(() => {
-    if (showDetailsForm) {
-      document.body.classList.add("modalOpen");
-    } else {
-      document.body.classList.remove("modalOpen");
-    }
-    return () => {
-      document.body.classList.remove("modalOpen");
-    };
-  }, [showDetailsForm]);
-
   // Nettoyer le scanner
   const cleanupScanner = useCallback(() => {
     // Arrêter le scanner continu
@@ -671,15 +659,6 @@ export default function ScanClient({installationId, installationName}: ScanClien
       </main>
 
       {showDetailsForm && scanResult && scannedBarcode && (
-        <>
-          {/* Overlay noir semi-transparent */}
-          <div
-            className={styles.modalOverlay}
-            onClick={handleCloseDetailsForm}
-          />
-
-          {/* Conteneur de la modale (centré) */}
-          <div className={styles.modalContainer}>
             <ScanDetailsForm
               installationId={installationId}
               directoryItem={scanResult.directoryItem || null}
@@ -688,8 +667,6 @@ export default function ScanClient({installationId, installationName}: ScanClien
               onClose={handleCloseDetailsForm}
               onSuccess={handleActionSuccess}
             />
-          </div>
-        </>
       )}
     </div>
   );
