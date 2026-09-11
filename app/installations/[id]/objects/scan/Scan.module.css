@@ -355,6 +355,21 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+/* Conteneur de la modale */
+.modalContainer {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  width: 100%;
+  max-width: 600px; /* Largeur max pour desktop */
+  max-height: 90vh; /* Hauteur max pour éviter le débordement */
+  overflow-y: auto; /* Scroll si nécessaire */
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -373,6 +388,21 @@
   max-height: 85vh;
   overflow-y: auto;
   animation: slideUp 0.3s ease-out;
+}
+
+/* Adaptations pour mobile */
+@media (max-width: 768px) {
+  .modalContainer {
+    max-width: 95vw;
+    padding: 0.5rem;
+    margin: 1rem;
+    border-radius: 12px;
+  }
+
+  /* Désactiver le scroll en arrière-plan quand la modale est ouverte */
+  body.modalOpen {
+    overflow: hidden;
+  }
 }
 
 @keyframes slideUp {
@@ -738,7 +768,7 @@
   border-radius: 6px;
   font-size: 0.875rem;
   background: white;
-  -moz-appearance: textfield; /* Remove spinner for Firefox */
+  appearance: textfield; /* Remove spinner for Firefox */
 }
 
 .quantityInput::-webkit-outer-spin-button,
