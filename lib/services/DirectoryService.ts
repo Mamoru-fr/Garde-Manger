@@ -9,7 +9,7 @@ import { randomUUID } from "crypto";
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 
 // Configuration de l'API OpenFoodFacts
-const OPEN_FOOD_FACTS_API_URL = "https://world.openfoodfacts.org/api/v0";
+const OPEN_FOOD_FACTS_API_URL = "https://api.openfoodfacts.org/api/v3";
 const USER_AGENT = "Garde-Manger/1.0 (https://garde-manger.example.com)";
 
 // Cache local pour éviter des appels répétés pour le même code-barres

@@ -160,7 +160,7 @@ export async function getBarcodeMetadata(barcode: string): Promise<ActionRespons
 
     // Récupérer directement depuis OpenFoodFacts
     const response = await fetch(
-      `https://world.openfoodfacts.org/api/v0/product/${cleanCode}.json`,
+      `https://api.openfoodfacts.org/api/v3/product/${cleanCode}.json`,
       {
         headers: {
           'User-Agent': 'Garde-Manger/1.0',
