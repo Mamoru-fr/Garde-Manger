@@ -158,13 +158,12 @@ export default function ScanResultModal({
             <Check size={20} />
             Objet trouvé
           </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className={styles.editButtonsContainer}>
             {!item.isReadOnly && (
               <button
                 onClick={handleEditToggle}
-                className={styles.modalClose}
+                className={styles.editToggleButton}
                 aria-label={isEditing ? "Terminer l'édition" : "Modifier l'objet"}
-                style={{ padding: '0.5rem' }}
               >
                 {isEditing ? '✓' : '✏️'}
               </button>
@@ -194,61 +193,42 @@ export default function ScanResultModal({
           {/* Informations du produit */}
           <div className={styles.productInfo}>
             {isEditing ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+              <div className={styles.editFormContainer}>
+                <div className={styles.editFormRow}>
+                  <label className={styles.editFormLabel}>
                     Nom *
                   </label>
                   <input
                     type="text"
                     value={editedData.name}
                     onChange={(e) => handleFieldChange('name', e.target.value)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.5rem', 
-                      border: '1px solid #d1d5db', 
-                      borderRadius: '6px', 
-                      fontSize: '0.875rem'
-                    }}
+                    className={styles.editFormInput}
                     placeholder="Nom du produit"
                   />
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+                <div className={styles.editFormGrid}>
+                  <div className={styles.editFormRow}>
+                    <label className={styles.editFormLabel}>
                       Marque
                     </label>
                     <input
                       type="text"
                       value={editedData.brand}
                       onChange={(e) => handleFieldChange('brand', e.target.value)}
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.5rem', 
-                        border: '1px solid #d1d5db', 
-                        borderRadius: '6px', 
-                        fontSize: '0.875rem'
-                      }}
+                      className={styles.editFormInput}
                       placeholder="Marque"
                     />
                   </div>
                   
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+                  <div className={styles.editFormRow}>
+                    <label className={styles.editFormLabel}>
                       Catégorie
                     </label>
                     <select
                       value={editedData.category}
                       onChange={(e) => handleFieldChange('category', e.target.value)}
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.5rem', 
-                        border: '1px solid #d1d5db', 
-                        borderRadius: '6px', 
-                        fontSize: '0.875rem',
-                        background: 'white'
-                      }}
+                      className={styles.editFormSelect}
                     >
                       <option value="">Sélectionnez une catégorie</option>
                       <option value="Produits alimentaires">Produits alimentaires</option>
@@ -286,27 +266,11 @@ export default function ScanResultModal({
               <span>✅ Informations issues d.OpenFoodFacts (non modifiables)</span>
             </div>
           ) : isEditing ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '0.5rem', 
-              background: '#fef3c7', 
-              borderRadius: '8px',
-              border: '1px solid #fde68a',
-              color: '#92400e',
-              fontSize: '0.875rem'
-            }}>
+            <div className={styles.editNotice}>
               ⚠️ Mode édition activé - modifiez les informations ci-dessus
             </div>
           ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '0.5rem', 
-              background: '#f0fdf4', 
-              borderRadius: '8px',
-              border: '1px solid #bbf7d0',
-              color: '#166534',
-              fontSize: '0.875rem'
-            }}>
+            <div className={styles.normalNotice}>
               ✏️ Cliquez sur l'icône en haut pour modifier
             </div>
           )}
@@ -347,7 +311,7 @@ export default function ScanResultModal({
 
           {/* Erreur */}
           {error && (
-            <div className={styles.foundStatus} style={{ background: "rgba(220, 38, 38, 0.1)", color: "#dc2626", borderColor: "rgba(220, 38, 38, 0.3)" }}>
+            <div className={`${styles.foundStatus} ${styles.errorStatus}`}>
               <X size={16} />
               <span>{error}</span>
             </div>

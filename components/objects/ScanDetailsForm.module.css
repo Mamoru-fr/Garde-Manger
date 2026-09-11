@@ -1,4 +1,7 @@
-/* ScanDetailsForm.module.css */
+/* ============================================
+   ScanDetailsForm - Modal Styles avec Theme Café
+   Basé sur le design system de Scan.module.css
+   ============================================ */
 
 /* Modal Overlay */
 .modalOverlay {
@@ -8,34 +11,108 @@
   right: 0;
   bottom: 0;
   margin-bottom: 1rem;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 20000;
+  z-index: 10000;
   padding: 1rem;
-  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Modal Content */
 .modalContent {
-  background: var(--card-bg, #fff);
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
   max-width: 700px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow-y: auto;
-  border: 1px solid var(--border-color, #e2e8f0);
-  -webkit-overflow-scrolling: touch;
+  animation: slideUp 0.3s ease-out;
+  padding: 1rem;
 }
 
-/* Product Header */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e8dfd0;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  color: #2e1a10;
+  margin: 0;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #6b5b47;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.modalClose:hover {
+  color: #2e1a10;
+  background: #fdf6e8;
+}
+
+/* Modal Body */
+.modalBody {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalFooter {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e8dfd0;
+  background: #fdf6e8;
+  border-radius: 0 0 12px 12px;
+}
+
+/* ============================================
+   PRODUCT HEADER
+   ============================================ */
+
 .productHeader {
   display: flex;
   gap: 1.5rem;
   padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  border-bottom: 1px solid #e8dfd0;
   align-items: flex-start;
 }
 
@@ -45,7 +122,9 @@
   height: 120px;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid #e8dfd0;
+  text-align: center;
+  background: white;
 }
 
 .productImage {
@@ -60,8 +139,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--bg-secondary, #f8fafc);
-  color: var(--text-muted, #94a3b8);
+  background: #fdf6e8;
+  color: #8b4513;
 }
 
 .productPlaceholder svg {
@@ -85,7 +164,7 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  color: #2e1a10;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -97,12 +176,12 @@
 .productCategory {
   margin: 0.25rem 0;
   font-size: 0.9375rem;
-  color: var(--text-secondary, #64748b);
+  color: #6b5b47;
 }
 
 .productBrand strong,
 .productCategory strong {
-  color: var(--text-primary, #1e293b);
+  color: #2e1a10;
 }
 
 .productOFF {
@@ -111,7 +190,7 @@
 }
 
 .offLink {
-  color: var(--primary-color, #3b82f6);
+  color: #5D4037;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -120,19 +199,54 @@
 
 .offLink:hover {
   text-decoration: underline;
-  color: var(--primary-hover, #2563eb);
+  color: #3E2723;
 }
 
-/* Status Message */
+/* ============================================
+   PRODUCT EDIT FORM
+   ============================================ */
+
+.productEditForm {
+  width: 100%;
+}
+
+.productEditRow {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0.5rem;
+}
+
+.productEditGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.productEditLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8b4513;
+  margin-bottom: 0.25rem;
+}
+
+/* ============================================
+   STATUS MESSAGES
+   ============================================ */
+
 .statusMessage {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  background: var(--bg-secondary, #f8fafc);
+  background: #fdf6e8;
   font-size: 0.875rem;
-  color: var(--text-secondary, #64748b);
+  color: #2e1a10;
   flex-wrap: wrap;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
 }
 
 .statusIcon {
@@ -145,13 +259,25 @@
 }
 
 .barcodeInfo code {
-  background: var(--card-bg, #fff);
+  background: white;
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
   font-family: monospace;
   font-size: 0.8125rem;
-  color: var(--text-muted, #64748b);
-  border: 1px solid var(--border-color, #e2e8f0);
+  color: #8b4513;
+  border: 1px solid #e8dfd0;
+}
+
+/* Edit Message */
+.editMessage {
+  text-align: center;
+  padding: 0.75rem 1.5rem;
+  background: #fdf6e8;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+  margin: 0 1.5rem 1rem;
+  color: #6b5b47;
+  font-size: 0.875rem;
 }
 
 /* Error Message */
@@ -160,21 +286,25 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 1.25rem;
-  background: var(--danger-bg, #fee2e2);
-  border: 1px solid var(--danger-color, #ef4444);
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
   border-radius: 8px;
   margin: 1rem 1.5rem;
-  color: var(--danger-color, #ef4444);
+  color: #dc2626;
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .errorMessage svg {
   flex-shrink: 0;
 }
 
-/* Form */
+/* ============================================
+   FORM STYLES
+   ============================================ */
+
 .form {
-  padding: 1.5rem;
+  padding: 1.5rem 0;
 }
 
 /* Form Sections */
@@ -191,12 +321,12 @@
 .formSectionTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-secondary, #64748b);
+  color: #6b5b47;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  border-bottom: 1px solid #e8dfd0;
 }
 
 /* Form Grid */
@@ -228,36 +358,38 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-primary, #1e293b);
+  color: #2e1a10;
 }
 
 .formLabel svg {
-  color: var(--primary-color, #3b82f6);
+  color: #5D4037;
   flex-shrink: 0;
 }
 
 /* Form Input */
 .formInput,
-.formTextarea {
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+.formTextarea,
+.formSelect {
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 0.9375rem;
-  color: var(--text-primary, #1e293b);
-  background: var(--card-bg, #fff);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-size: 0.875rem;
+  color: #2e1a10;
+  background: white;
+  transition: all 0.2s;
 }
 
 .formInput:focus,
-.formTextarea:focus {
+.formTextarea:focus,
+.formSelect:focus {
   outline: none;
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: #5D4037;
+  box-shadow: 0 0 0 3px rgba(93, 64, 55, 0.15);
 }
 
 .formInput::placeholder,
 .formTextarea::placeholder {
-  color: var(--text-muted, #94a3b8);
+  color: #8b4513;
 }
 
 .formInput[type="number"] {
@@ -273,6 +405,12 @@
 .formTextarea {
   resize: vertical;
   min-height: 80px;
+}
+
+.formSelect {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 /* Input with Datalist */
@@ -294,7 +432,7 @@
   right: 0.875rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted, #94a3b8);
+  color: #8b4513;
   font-size: 0.875rem;
   pointer-events: none;
 }
@@ -302,7 +440,7 @@
 /* Form Hint */
 .formHint {
   font-size: 0.8125rem;
-  color: var(--text-muted, #94a3b8);
+  color: #8b4513;
   margin-top: 0.25rem;
 }
 
@@ -310,37 +448,41 @@
 .daysBadge {
   display: inline-block;
   padding: 0.125rem 0.375rem;
-  background: var(--bg-secondary, #f1f5f9);
+  background: #fdf6e8;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-secondary, #64748b);
+  color: #6b5b47;
   margin-left: 0.5rem;
+  border: 1px solid #e8dfd0;
 }
 
 .daysBadge.daysExpiresSoon {
-  background: var(--danger-bg, #fee2e2);
-  color: var(--danger-color, #ef4444);
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
-/* Form Actions */
+/* ============================================
+   BUTTONS
+   ============================================ */
+
 .formActions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-top: 1px solid #e8dfd0;
 }
 
-/* Buttons */
 .cancelButton,
 .submitButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   border-radius: 8px;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -350,25 +492,37 @@
 }
 
 .cancelButton {
-  background: var(--bg-secondary, #f1f5f9);
-  color: var(--text-secondary, #64748b);
+  background: white;
+  color: #8b4513;
+  border: 1px solid #d4b896;
 }
 
 .cancelButton:hover:not(:disabled) {
-  background: var(--border-color, #e2e8f0);
+  background: #fdf6e8;
 }
 
 .submitButton {
-  background: var(--primary-color, #3b82f6);
+  background: #5D4037;
   color: white;
 }
 
 .submitButton:hover:not(:disabled) {
-  background: var(--primary-hover, #2563eb);
+  background: #3E2723;
+}
+
+/* Danger Button (Retirer) */
+.dangerButton {
+  background: #dc2626;
+  color: white;
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
 .cancelButton:disabled,
-.submitButton:disabled {
+.submitButton:disabled,
+.dangerButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -395,7 +549,10 @@
   }
 }
 
-/* Responsive */
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
 @media (max-width: 768px) {
   .modalOverlay {
     align-items: flex-start;
@@ -439,6 +596,10 @@
   .productBrand,
   .productCategory {
     margin: 0.25rem auto;
+  }
+
+  .productEditGrid {
+    grid-template-columns: 1fr;
   }
 
   .formGrid {
@@ -502,6 +663,11 @@
     height: 80px;
   }
 
+  .productPlaceholder svg {
+    width: 32px;
+    height: 32px;
+  }
+
   .productName {
     font-size: 1.125rem;
   }
@@ -515,6 +681,11 @@
     font-size: 0.8125rem;
   }
 
+  .formLabel svg {
+    width: 14px;
+    height: 14px;
+  }
+
   .formActions {
     gap: 0.5rem;
   }
@@ -526,39 +697,85 @@
   }
 }
 
-/* Small mobile devices (portrait phones) */
-@media (max-width: 360px) {
-  .modalOverlay {
-    padding: 0.25rem;
-    align-items: flex-start;
-    justify-content: flex-start;
-  }
-
+/* Fix for landscape mobile */
+@media (max-width: 767px) and (orientation: landscape) {
   .modalContent {
-    margin: 0.25rem;
-    max-height: calc(100vh - 0.5rem);
-    width: calc(100% - 0.5rem);
-    align-self: flex-start;
+    max-height: 85vh;
   }
 
-  .productImageContainer {
-    width: 64px;
-    height: 64px;
+  .productHeader {
+    flex-direction: row;
+    align-items: flex-start;
   }
 
-  .productPlaceholder svg {
-    width: 32px;
-    height: 32px;
+  .productEditGrid {
+    grid-template-columns: 1fr;
   }
+}
 
-  .formInput,
-  .formTextarea {
-    padding: 0.5rem;
-    font-size: 0.875rem;
+/* ============================================
+   ACTION SELECTOR STYLES
+   ============================================ */
+
+/* Action Selector Container */
+.actionSelector {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background: #fdf6e8;
+  border-radius: 8px;
+  border: 1px solid #e8dfd0;
+  margin: 0 1.5rem;
+}
+
+/* Action Buttons */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.actionButtonAdd {
+  background: #5D4037;
+  color: white;
+  border-color: #5D4037;
+}
+
+.actionButtonAdd:hover {
+  background: #3E2723;
+}
+
+.actionButtonRemove {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.actionButtonRemove:hover {
+  background: #b91c1c;
+}
+
+.actionButtonActive {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 2px rgba(93, 64, 55, 0.3);
+}
+
+/* Responsive for Action Selector */
+@media (min-width: 768px) {
+  .actionSelector {
+    padding: 0.75rem 2rem;
   }
-
-  .formLabel svg {
-    width: 14px;
-    height: 14px;
+  
+  .actionButton {
+    padding: 0.625rem 1.25rem;
   }
 }

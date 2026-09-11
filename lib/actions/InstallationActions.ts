@@ -141,7 +141,8 @@ export async function getInstallationById(
 // Action pour récupérer les objets d'une installation
 // Retourne la liste des objets avec leurs métadonnées (nom, marque, etc.)
 export async function getInstallationObjects(
-  installationId: string
+  installationId: string,
+  cacheBuster?: string
 ): Promise<ActionResponse<{
   objects: Array<{
     id: string;

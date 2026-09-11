@@ -1459,6 +1459,140 @@ export async function adjustObjectQuantity(
   }
 }
 
+/**
+ * Ajuste la quantité d'un objet en utilisant son ID d'installation (objectInstallationId)
+ * C'est plus direct que adjustObjectQuantity qui utilise le barcode
+ */
+export async function adjustObjectQuantityByInstallationId(
+  objectInstallationId: string,
+  adjustment: number // Positif pour ajouter, négatif pour retirer
+): Promise<ActionResponse<{ newQuantity: number }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Vérifier que l'objet appartient à une installation accessible
+    const obj = await db.query.objectInstallation.findFirst({
+      where: eq(objectInstallation.id, objectInstallationId),
+      columns: { id: true, quantity: true, installationId: true },
+    });
+
+    if (!obj) {
+      return {
+        success: false,
+        error: "Objet non trouvé",
+        code: ErrorCodes.OBJECT_NOT_FOUND,
+      };
+    }
+
+    // Vérifier l'accès à l'installation
+    const accessResult = await InstallationController.checkAccess(
+      session.user.id,
+      obj.installationId
+    );
+
+    if (!accessResult.success || !accessResult.data?.hasAccess) {
+      return {
+        success: false,
+        error: "Accès refusé",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    const newQuantity = obj.quantity + adjustment;
+
+    // Si la quantité passe à 0 ou en dessous, supprimer l'objet
+    if (newQuantity <= 0) {
+      const removeResult = await removeObjectFromInstallation(objectInstallationId);
+      if (!removeResult.success) {
+        return removeResult as ActionResponse<{ newQuantity: number }>;
+      }
+
+      return {
+        success: true,
+        data: {
+          newQuantity: 0,
+        },
+      };
+    }
+
+    // Mettre à jour la quantité
+    await db
+      .update(objectInstallation)
+      .set({
+        quantity: newQuantity,
+        updatedAt: new Date(),
+      })
+      .where(eq(objectInstallation.id, objectInstallationId));
+
+    return {
+      success: true,
+      data: {
+        newQuantity,
+      },
+    };
+  } catch (error) {
+    console.error("[ObjectActions] Erreur adjustObjectQuantityByInstallationId:", error);
+    return {
+      success: false,
+      error: "Erreur lors de l'ajustement de la quantité",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * Ajoute un objet à une installation avec tous les paramètres (pour le déplacement)
+ * Version simple sans FormData, pour usage côté client
+ */
+export async function addObjectToInstallationSimple(
+  installationId: string,
+  objectDirectoryId: string,
+  quantity: number,
+  location?: string,
+  expiryDate?: Date
+): Promise<ActionResponse<{ objectInstallationId: string }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // Appeler le contrôleur directement
+    const result = await ObjectController.addObjectToInstallation(
+      installationId,
+      objectDirectoryId,
+      quantity,
+      session.user.id,
+      location,
+      expiryDate
+    );
+
+    return result;
+  } catch (error) {
+    console.error("[ObjectActions] Erreur addObjectToInstallationSimple:", error);
+    return {
+      success: false,
+      error: "Erreur lors de l'ajout de l'objet",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
 // ============================================================================
 // ACTIONS UNIFIÉES POUR LE FORMULAIRE DE SCAN (avec tous les champs)
 // ============================================================================
