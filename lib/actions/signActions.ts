@@ -61,4 +61,5 @@ export const signup = async (formData: FormData) => {
 
 export const signout = async () => {
     await auth.api.signOut({headers: await headers()}); // attention à bien passer les headers!
+    redirect("/"); // on redirige vers la home page une fois déconnecté
 };
