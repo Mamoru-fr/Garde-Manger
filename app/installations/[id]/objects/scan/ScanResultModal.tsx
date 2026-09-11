@@ -26,6 +26,12 @@ export default function ScanResultModal({
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState({
+    name: item.name,
+    brand: item.brand || "",
+    category: item.category || "",
+  });
 
   // Gestion de la quantité
   const increment = useCallback(() => {
@@ -34,6 +40,15 @@ export default function ScanResultModal({
 
   const decrement = useCallback(() => {
     setQuantity((q) => Math.max(q - 1, 1));
+  }, []);
+
+  // Gestion de l'édition
+  const handleEditToggle = useCallback(() => {
+    setIsEditing((prev) => !prev);
+  }, []);
+
+  const handleFieldChange = useCallback((field: 'name' | 'brand' | 'category', value: string) => {
+    setEditedData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   // Gérer l'ajout de quantité
@@ -54,16 +69,16 @@ export default function ScanResultModal({
           throw new Error(result.error || "Erreur lors de l'ajout");
         }
       } else {
-        // Créer un nouvel objet dans l'installation
+        // Créer un nouvel objet dans l'installation avec les données éditées
         const result = await addScannedObject(
           installationId,
           barcode,
           quantity,
           {
-            name: item.name,
-            category: item.category || undefined,
+            name: editedData.name,
+            category: editedData.category || undefined,
             description: item.description || undefined,
-            brand: item.brand || undefined,
+            brand: editedData.brand || undefined,
             // imageUrl sera gérée séparément
           }
         );
@@ -81,7 +96,7 @@ export default function ScanResultModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [installationId, barcode, currentQuantity, quantity, item, onSuccess, onClose]);
+  }, [installationId, barcode, currentQuantity, quantity, item, editedData, onSuccess, onClose]);
 
   // Gérer le retrait de quantité
   const handleRemove = useCallback(async () => {
@@ -143,9 +158,21 @@ export default function ScanResultModal({
             <Check size={20} />
             Objet trouvé
           </h2>
-          <button onClick={onClose} className={styles.modalClose} aria-label="Fermer">
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {!item.isReadOnly && (
+              <button
+                onClick={handleEditToggle}
+                className={styles.modalClose}
+                aria-label={isEditing ? "Terminer l'édition" : "Modifier l'objet"}
+                style={{ padding: '0.5rem' }}
+              >
+                {isEditing ? '✓' : '✏️'}
+              </button>
+            )}
+            <button onClick={onClose} className={styles.modalClose} aria-label="Fermer">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Contenu */}
@@ -166,11 +193,87 @@ export default function ScanResultModal({
 
           {/* Informations du produit */}
           <div className={styles.productInfo}>
-            <h3 className={styles.productName}>{item.name}</h3>
-            {item.brand && <p className={styles.productBrand}>Marque: {item.brand}</p>}
-            {item.category && <p className={styles.productCategory}>Catégorie: {item.category}</p>}
-            {item.description && (
-              <p className={styles.productDescription}>{item.description}</p>
+            {isEditing ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+                    Nom *
+                  </label>
+                  <input
+                    type="text"
+                    value={editedData.name}
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: '6px', 
+                      fontSize: '0.875rem'
+                    }}
+                    placeholder="Nom du produit"
+                  />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+                      Marque
+                    </label>
+                    <input
+                      type="text"
+                      value={editedData.brand}
+                      onChange={(e) => handleFieldChange('brand', e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.5rem', 
+                        border: '1px solid #d1d5db', 
+                        borderRadius: '6px', 
+                        fontSize: '0.875rem'
+                      }}
+                      placeholder="Marque"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#2e1a10', fontWeight: 500, marginBottom: '0.25rem' }}>
+                      Catégorie
+                    </label>
+                    <select
+                      value={editedData.category}
+                      onChange={(e) => handleFieldChange('category', e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.5rem', 
+                        border: '1px solid #d1d5db', 
+                        borderRadius: '6px', 
+                        fontSize: '0.875rem',
+                        background: 'white'
+                      }}
+                    >
+                      <option value="">Sélectionnez une catégorie</option>
+                      <option value="Produits alimentaires">Produits alimentaires</option>
+                      <option value="Boissons">Boissons</option>
+                      <option value="Produits d'hygiène">Produits d'hygiène</option>
+                      <option value="Produits ménagers">Produits ménagers</option>
+                      <option value="Bricolage">Bricolage</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {item.description && !isEditing && (
+                  <p className={styles.productDescription}>{item.description}</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <h3 className={styles.productName}>{item.name}</h3>
+                {item.brand && <p className={styles.productBrand}>Marque: {item.brand}</p>}
+                {item.category && <p className={styles.productCategory}>Catégorie: {item.category}</p>}
+                {item.description && (
+                  <p className={styles.productDescription}>{item.description}</p>
+                )}
+              </>
             )}
           </div>
 
@@ -178,9 +281,33 @@ export default function ScanResultModal({
           {getStatusMessage()}
           
           {/* Message pour les objets verrouillés */}
-          {item.isReadOnly && (
+          {item.isReadOnly ? (
             <div className={styles.readOnlyNotice}>
               <span>✅ Informations issues d.OpenFoodFacts (non modifiables)</span>
+            </div>
+          ) : isEditing ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '0.5rem', 
+              background: '#fef3c7', 
+              borderRadius: '8px',
+              border: '1px solid #fde68a',
+              color: '#92400e',
+              fontSize: '0.875rem'
+            }}>
+              ⚠️ Mode édition activé - modifiez les informations ci-dessus
+            </div>
+          ) : (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '0.5rem', 
+              background: '#f0fdf4', 
+              borderRadius: '8px',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              fontSize: '0.875rem'
+            }}>
+              ✏️ Cliquez sur l'icône en haut pour modifier
             </div>
           )}
 
