@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { getInstallationById, getInstallationObjects, checkInstallationAccess } from "@/lib/actions/InstallationActions";
+import { getInstallationById, getInstallationObjects, checkInstallationAccess, getUserInstallations } from "@/lib/actions/InstallationActions";
 import { InstallationRole } from "@/lib/types";
 import InstallationDetailsClient from "./InstallationDetailsClient";
 
 
+
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
 
 export default async function InstallationDetailsPage({
   params,
@@ -40,6 +44,10 @@ export default async function InstallationDetailsPage({
   const objectsResult = await getInstallationObjects(id);
   const objects = objectsResult.success ? objectsResult.data?.objects || [] : [];
 
+  // Récupérer toutes les installations de l'utilisateur pour le déplacement
+  const installationsResult = await getUserInstallations();
+  const userInstallations = installationsResult.success ? installationsResult.data?.installations || [] : [];
+
   const installation = installationResult.data.installation;
   const userRole = installation.userRole as InstallationRole;
 
@@ -51,6 +59,7 @@ export default async function InstallationDetailsPage({
       sessionUserId={session.user.id}
       installationId={id}
       objects={objects} // ✅ Passer les objets réels
+      userInstallations={userInstallations} // Passer les installations pour le déplacement
     />
   );
 }

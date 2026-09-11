@@ -539,3 +539,258 @@
     justify-content: center;
   }
 }
+
+/* ============================================
+   SECTION DE GESTION DU STOCK
+   ============================================ */
+
+.stockManagementSection {
+  padding: 1.5rem;
+  border-top: 1px solid #e8dfd0;
+  background: #fdf6e8;
+  margin-top: 1rem;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Ajustement de quantité */
+.quantityAdjustment {
+  margin-bottom: 1.5rem;
+}
+
+.quantityLabel {
+  display: block;
+  font-size: 0.9rem;
+  color: #2e1a10;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.adjustTitle {
+  display: block;
+  font-size: 0.85rem;
+  color: #6b5b47;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.quantityControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.quantityInputGroup {
+  display: flex;
+  align-items: center;
+}
+
+.quantityInputField {
+  width: 60px;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-align: center;
+  background: white;
+  color: #2e1a10;
+}
+
+.quantityInputField:focus {
+  outline: none;
+  border-color: #8b4513;
+  box-shadow: 0 0 0 2px rgba(139, 69, 19, 0.1);
+}
+
+.quantityActionButtons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.addButton,
+.removeButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.addButton {
+  background: #4caf50;
+  color: white;
+}
+
+.addButton:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.removeButton {
+  background: #f44336;
+  color: white;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantityAdjustButton,
+.quantityButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  color: #2e1a10;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(46, 26, 16, 0.1);
+}
+
+.quantityAdjustButton:hover:not(:disabled),
+.quantityButton:hover:not(:disabled) {
+  background: #f0e6d8;
+  transform: scale(1.05);
+}
+
+.quantityAdjustButton:disabled,
+.quantityButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantityValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2e1a10;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Déplacement vers une autre installation */
+.moveSection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed #e8dfd0;
+}
+
+.moveTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #2e1a10;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.moveControls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.installationSelect {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+  color: #2e1a10;
+  cursor: pointer;
+}
+
+.moveQuantityInput {
+  width: 80px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  background: white;
+  color: #2e1a10;
+}
+
+.moveQuantityInput:focus {
+  outline: none;
+  border-color: #8b4513;
+  box-shadow: 0 0 0 2px rgba(139, 69, 19, 0.1);
+}
+
+.moveButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: #5D4037;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.moveButton:hover:not(:disabled) {
+  background: #4E342E;
+  transform: translateY(-1px);
+}
+
+.moveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.moveHint {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #8b4513;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Spinner */
+.spinnerSmall {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
