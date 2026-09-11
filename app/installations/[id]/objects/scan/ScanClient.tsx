@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { X, Check, AlertTriangle, Loader2, Barcode, Eye, EyeOff, Camera, CameraOff } from "lucide-react";
-import { BrowserMultiFormatReader, BarcodeFormat } from "@zxing/browser";
-import { performCompleteScan } from "@/lib/actions/ObjectActions";
-import { SimplifiedDirectoryItem, ScanStatus } from "@/lib/types/scanTypes";
+import {useState, useCallback, useRef, useEffect} from "react";
+import {useRouter} from "next/navigation";
+import {X, Check, AlertTriangle, Loader2, Barcode, Eye, EyeOff, Camera, CameraOff} from "lucide-react";
+import {BrowserMultiFormatReader, BarcodeFormat} from "@zxing/browser";
+import {performCompleteScan} from "@/lib/actions/ObjectActions";
+import {SimplifiedDirectoryItem, ScanStatus} from "@/lib/types/scanTypes";
 import ScanDetailsForm from "@/components/objects/ScanDetailsForm";
 import styles from "./Scan.module.css";
 
@@ -35,9 +35,9 @@ const SUPPORTED_FORMATS: BarcodeFormat[] = [
   BarcodeFormat.PDF_417,
 ];
 
-export default function ScanClient({ installationId, installationName }: ScanClientProps) {
+export default function ScanClient({installationId, installationName}: ScanClientProps) {
   const router = useRouter();
-  
+
   // Détecter Safari/iOS une fois pour éviter de recalculer à chaque render
   const isSafari = typeof window !== 'undefined' ? /^((?!chrome|android).)*safari/i.test(navigator.userAgent) : false;
   const isIOS = typeof window !== 'undefined' ? /iPad|iPhone|iPod/.test(navigator.userAgent) || (
@@ -49,7 +49,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
   const [error, setError] = useState<ScannerError | null>(null);
-  
+
   // Résultat du scan
   const [scanResult, setScanResult] = useState<{
     foundInDirectory: boolean;
@@ -74,7 +74,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     console.log('[CAMERA DEBUG] isMobileSafari:', isMobileSafari);
     console.log('[CAMERA DEBUG] scannerConfig.facingMode:', scannerConfig.facingMode);
     console.log('[CAMERA DEBUG] currentDeviceId:', currentDeviceId);
-    console.log('[CAMERA DEBUG] availableCameras:', availableCameras.map(c => ({ deviceId: c.deviceId, label: c.label, facingMode: (c as any).facingMode })));
+    console.log('[CAMERA DEBUG] availableCameras:', availableCameras.map(c => ({deviceId: c.deviceId, label: c.label, facingMode: (c as any).facingMode})));
   }, [isMobileSafari, scannerConfig.facingMode, currentDeviceId, availableCameras]);
 
   // Références
@@ -85,6 +85,18 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
   // État du formulaire de détails
   const [showDetailsForm, setShowDetailsForm] = useState(false);
+
+  // Dans ScanClient.tsx
+  useEffect(() => {
+    if (showDetailsForm) {
+      document.body.classList.add("modalOpen");
+    } else {
+      document.body.classList.remove("modalOpen");
+    }
+    return () => {
+      document.body.classList.remove("modalOpen");
+    };
+  }, [showDetailsForm]);
 
   // Nettoyer le scanner
   const cleanupScanner = useCallback(() => {
@@ -143,23 +155,23 @@ export default function ScanClient({ installationId, installationName }: ScanCli
 
       // ⚡ FORCER LA DEMANDE DE PERMISSION ICI
       let mediaStream: MediaStream | undefined;
-      
+
       try {
         console.log('[CAMERA DEBUG] Préparation des constraints vidéos');
         // Utiliser deviceId si disponible, sinon facingMode
         const videoConstraints: MediaTrackConstraints = {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: {ideal: 1280},
+          height: {ideal: 720},
         };
 
         // Ajouter deviceId si disponible
         if (currentDeviceId) {
           console.log('[CAMERA DEBUG] Utilisation de currentDeviceId:', currentDeviceId);
-          videoConstraints.deviceId = { exact: currentDeviceId };
+          videoConstraints.deviceId = {exact: currentDeviceId};
         } else if (isMobileSafari) {
           console.log('[CAMERA DEBUG] iOS/Safari : forcer facingMode:', scannerConfig.facingMode);
           // Sur iOS/Safari, forcer facingMode: 'environment' par défaut
-          videoConstraints.facingMode = { ideal: scannerConfig.facingMode };
+          videoConstraints.facingMode = {ideal: scannerConfig.facingMode};
         } else {
           console.log('[CAMERA DEBUG] Fallback vers facingMode:', scannerConfig.facingMode);
           // Fallback vers facingMode si pas de deviceId
@@ -174,7 +186,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       } catch (mediaError) {
         const errorMessage = mediaError instanceof Error ? mediaError.message : String(mediaError);
         console.error('[CAMERA DEBUG] getUserMedia FAILED:', errorMessage);
-        
+
         // Si c'est une erreur de permission refusée
         if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
           console.error('[CAMERA DEBUG] Erreur de permission');
@@ -184,18 +196,18 @@ export default function ScanClient({ installationId, installationName }: ScanCli
               : "L'accès à la caméra a été refusé. Cliquez sur l'icône 🔒 dans la barre d'adresse pour autoriser l'accès."
           );
         }
-        
+
         // Sinon, réessayer avec des contraintes minimalistes
         try {
           const fallbackConstraints: MediaTrackConstraints = {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+            width: {ideal: 640},
+            height: {ideal: 480},
           };
 
           if (currentDeviceId) {
-            fallbackConstraints.deviceId = { exact: currentDeviceId };
+            fallbackConstraints.deviceId = {exact: currentDeviceId};
           } else {
-            fallbackConstraints.facingMode = { ideal: scannerConfig.facingMode };
+            fallbackConstraints.facingMode = {ideal: scannerConfig.facingMode};
           }
 
           mediaStream = await getUserMedia.call(navigator.mediaDevices || navigator, {
@@ -231,23 +243,23 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       if (videoRef.current) {
         console.log('[CAMERA DEBUG] Assignation du stream à la vidéo');
         videoRef.current.srcObject = mediaStream;
-        
+
         // Attendre que la vidéo soit prête avant de scanner
         const playPromise = videoRef.current.play().catch(e => {
           console.error("[CAMERA DEBUG] Erreur lecture vidéo:", e);
           throw e;
         });
-        
+
         // Attendre que la vidéo soit en train de jouer
         await playPromise;
-        
+
         // Vérifier que la vidéo a bien des dimensions > 0
         if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
-          console.error('[CAMERA DEBUG] vidéo a des dimensions nulles:', { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+          console.error('[CAMERA DEBUG] vidéo a des dimensions nulles:', {width: videoRef.current.videoWidth, height: videoRef.current.videoHeight});
           throw new Error("Le flux vidéo n'a pas de dimensions valides. Vérifiez les permissions de la caméra.");
         }
-        
-        console.log('[CAMERA DEBUG] Vidéo prête, dimensions:', { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+
+        console.log('[CAMERA DEBUG] Vidéo prête, dimensions:', {width: videoRef.current.videoWidth, height: videoRef.current.videoHeight});
       } else {
         console.error('[CAMERA DEBUG] videoRef.current est null');
         throw new Error("L'élément vidéo n'est pas disponible.");
@@ -257,7 +269,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       if (videoRef.current && codeReaderRef.current) {
         console.log('[CAMERA DEBUG] Démarrage du scanner...');
         setScannedBarcode(null);
-        
+
         // Utiliser une référence locale pour éviter les closures
         const scanCallback = (result: any, err: any) => {
           if (result) {
@@ -270,7 +282,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
             console.error("[CAMERA DEBUG] Erreur de décodage:", err);
           }
         };
-        
+
         // Démarrer le scan
         try {
           scannerControlsRef.current = codeReaderRef.current.scan(
@@ -287,14 +299,14 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('[CAMERA DEBUG] startScanner FAILED:', errorMessage);
-      
+
       let errorType: ScannerError['type'] = 'unknown';
-      
+
       if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
         errorType = 'permission';
       } else if (
         errorMessage.includes('camera') ||
-        errorMessage.includes('video') || 
+        errorMessage.includes('video') ||
         errorMessage.includes('MediaStream') ||
         errorMessage.includes('getUserMedia')
       ) {
@@ -323,7 +335,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       setScanStatus('processing');
 
       const result = await performCompleteScan(installationId, barcode);
-      
+
       if (!result.success || !result.data) {
         throw new Error(result.error || "Erreur de scan");
       }
@@ -372,35 +384,35 @@ export default function ScanClient({ installationId, installationName }: ScanCli
     console.log('[CAMERA DEBUG] toggleCamera appelé');
     console.log('[CAMERA DEBUG] availableCameras.length:', availableCameras.length);
     console.log('[CAMERA DEBUG] isMobileSafari:', isMobileSafari);
-    
+
     // Désactiver uniqueness si aucune caméra n'est disponible ET pas sur iOS
     if (availableCameras.length === 0 && !isMobileSafari) {
       console.log('[CAMERA DEBUG] Basculement désactivé : aucune caméra ou pas sur iOS');
       return;
     }
-    
+
     console.log('[CAMERA DEBUG] Arrêt du scanner...');
     stopScanner();
-    
+
     // Basculer le facingMode (user ↔ environment)
     const newFacingMode = scannerConfig.facingMode === 'environment' ? 'user' : 'environment';
     console.log('[CAMERA DEBUG] Nouveau facingMode:', newFacingMode);
-    setScannerConfig(prev => ({ ...prev, facingMode: newFacingMode }));
-    
+    setScannerConfig(prev => ({...prev, facingMode: newFacingMode}));
+
     // Trouver une caméra avec le nouveau facingMode
     let nextCamera = availableCameras.find(
-      (device) => (device as { facingMode?: 'user' | 'environment' }).facingMode === newFacingMode
+      (device) => (device as {facingMode?: 'user' | 'environment'}).facingMode === newFacingMode
     );
-    console.log('[CAMERA DEBUG] nextCamera avec facingMode:', nextCamera ? { deviceId: nextCamera.deviceId, facingMode: (nextCamera as any).facingMode } : null);
-    
+    console.log('[CAMERA DEBUG] nextCamera avec facingMode:', nextCamera ? {deviceId: nextCamera.deviceId, facingMode: (nextCamera as any).facingMode} : null);
+
     // Si aucune caméra ne correspond, utiliser la première disponible ou forcer le facingMode
     if (!nextCamera && availableCameras.length > 0) {
       nextCamera = availableCameras.find(
         (device) => device.deviceId !== currentDeviceId
       );
-      console.log('[CAMERA DEBUG] nextCamera fallback:', nextCamera ? { deviceId: nextCamera.deviceId } : null);
+      console.log('[CAMERA DEBUG] nextCamera fallback:', nextCamera ? {deviceId: nextCamera.deviceId} : null);
     }
-    
+
     // Mettre à jour currentDeviceId (ou le mettre à null pour forcer le facingMode)
     if (nextCamera) {
       console.log('[CAMERA DEBUG] Mise à jour currentDeviceId:', nextCamera.deviceId);
@@ -409,7 +421,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       console.log('[CAMERA DEBUG] Pas de nextCamera trouvé, currentDeviceId mis à null');
       setCurrentDeviceId(null); // Fallback : pas de deviceId → on utilisera facingMode
     }
-    
+
     // Redémarrer le scanner avec la nouvelle caméra
     console.log('[CAMERA DEBUG] Redémarrage du scanner dans 200ms...');
     setTimeout(startScanner, 200);
@@ -418,17 +430,17 @@ export default function ScanClient({ installationId, installationName }: ScanCli
   // Basculer la lampe torche
   const toggleTorch = useCallback(() => {
     if (!streamRef.current) return;
-    
+
     const videoTrack = streamRef.current.getVideoTracks()[0];
     if (videoTrack && videoTrack.applyConstraints) {
       const capabilities = videoTrack.getCapabilities?.();
-      
+
       if (capabilities && 'torch' in capabilities) {
         const newTorchState = !scannerConfig.torchOn;
-        setScannerConfig(prev => ({ ...prev, torchOn: newTorchState }));
-        
+        setScannerConfig(prev => ({...prev, torchOn: newTorchState}));
+
         // Utiliser any pour éviter les problèmes de type avec torch
-        const constraints = { advanced: [{ torch: newTorchState }] as any };
+        const constraints = {advanced: [{torch: newTorchState}] as any};
         videoTrack.applyConstraints(constraints).catch(console.error);
       }
     }
@@ -459,26 +471,26 @@ export default function ScanClient({ installationId, installationName }: ScanCli
         console.log('[CAMERA DEBUG] devices:', devices);
         const videoDevices = devices.filter((device) => device.kind === "videoinput");
         console.log('[CAMERA DEBUG] videoDevices:', videoDevices);
-        
+
         // 🔹 Ajouter facingMode personnalisé à chaque caméra
         const camerasWithFacingMode = await Promise.all(
           videoDevices.map(async (device) => {
             const label = device.label?.toLowerCase() || "";
             let facingMode: 'user' | 'environment' | 'unknown' = 'unknown';
-            
+
             // 🔹 Deviner facingMode à partir du label
             if (label.includes('back') || label.includes('arrière') || label.includes('rear')) {
               facingMode = 'environment';
             } else if (label.includes('front') || label.includes('avant') || label.includes('selfie')) {
               facingMode = 'user';
             }
-            
+
             // 🔹 Si on n'a pas pu deviner, essayer un stream temporaire
             if (facingMode === 'unknown' && device.deviceId) {
               try {
                 console.log('[CAMERA DEBUG] Test stream temporaire pour:', device.deviceId);
                 const testStream = await navigator.mediaDevices.getUserMedia({
-                  video: { deviceId: { exact: device.deviceId } },
+                  video: {deviceId: {exact: device.deviceId}},
                 });
                 const videoTrack = testStream.getVideoTracks()[0];
                 const settings = videoTrack.getSettings();
@@ -493,28 +505,28 @@ export default function ScanClient({ installationId, installationName }: ScanCli
               }
             }
             console.log('[CAMERA DEBUG] facingMode final pour device:', device.deviceId, '=>', facingMode);
-            
-            return { ...device, facingMode };
+
+            return {...device, facingMode};
           })
         );
-        
+
         setAvailableCameras(camerasWithFacingMode);
-        console.log('[CAMERA DEBUG] camerasWithFacingMode:', camerasWithFacingMode.map(c => ({ deviceId: c.deviceId, facingMode: (c as any).facingMode })));
-        
+        console.log('[CAMERA DEBUG] camerasWithFacingMode:', camerasWithFacingMode.map(c => ({deviceId: c.deviceId, facingMode: (c as any).facingMode})));
+
         // 🔹 Trouver la caméra arrière par défaut
         const defaultCamera = camerasWithFacingMode.find(
-          (device) => (device as { facingMode?: 'user' | 'environment' }).facingMode === 'environment'
+          (device) => (device as {facingMode?: 'user' | 'environment'}).facingMode === 'environment'
         ) || camerasWithFacingMode[0];
-        
-        console.log('[CAMERA DEBUG] defaultCamera:', defaultCamera ? { deviceId: defaultCamera.deviceId, facingMode: (defaultCamera as any).facingMode } : null);
-        
+
+        console.log('[CAMERA DEBUG] defaultCamera:', defaultCamera ? {deviceId: defaultCamera.deviceId, facingMode: (defaultCamera as any).facingMode} : null);
+
         if (defaultCamera) {
           setCurrentDeviceId(defaultCamera.deviceId);
           // Mettre à jour facingMode dans la config
-          const deviceFacingMode = (defaultCamera as { facingMode?: 'user' | 'environment' }).facingMode;
+          const deviceFacingMode = (defaultCamera as {facingMode?: 'user' | 'environment'}).facingMode;
           if (deviceFacingMode) {
             console.log('[CAMERA DEBUG] Initialisation facingMode:', deviceFacingMode);
-            setScannerConfig(prev => ({ ...prev, facingMode: deviceFacingMode }));
+            setScannerConfig(prev => ({...prev, facingMode: deviceFacingMode}));
           }
         }
       } catch (error) {
@@ -552,7 +564,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
               <p className={styles.startScannerHint}>
                 Pointez votre caméra vers un code-barres pour commencer
               </p>
-              
+
               {/* Alternative : Saisie manuelle du code-barres */}
               <div className={styles.manualEntryContainer}>
                 <p className={styles.manualEntryTitle}>Ou entrez manuellement un code-barres :</p>
@@ -587,7 +599,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
                 muted
                 autoPlay
               />
-              
+
               <div className={styles.scannerOverlay}>
                 <div className={styles.scannerFrame} />
                 <p className={styles.scannerHint}>
@@ -621,7 +633,7 @@ export default function ScanClient({ installationId, installationName }: ScanCli
                   </p>
                 </div>
               )}
-              
+
               {error.type !== 'permission' && (
                 <>
                   <AlertTriangle size={48} className={styles.errorIcon} />
@@ -629,13 +641,13 @@ export default function ScanClient({ installationId, installationName }: ScanCli
                   <p>{error.message}</p>
                 </>
               )}
-              
+
               <div className={styles.errorActions}>
                 <button onClick={handleRetry} className={styles.retryButton}>
                   <Barcode size={16} />
                   Reessayer
                 </button>
-                <button 
+                <button
                   onClick={() => router.push(`/installations/${installationId}`)}
                   className={styles.cancelButtonInError}
                 >
@@ -659,14 +671,25 @@ export default function ScanClient({ installationId, installationName }: ScanCli
       </main>
 
       {showDetailsForm && scanResult && scannedBarcode && (
-        <ScanDetailsForm
-          installationId={installationId}
-          directoryItem={scanResult.directoryItem || null}
-          barcode={scannedBarcode}
-          currentQuantity={scanResult.currentQuantity}
-          onClose={handleCloseDetailsForm}
-          onSuccess={handleActionSuccess}
-        />
+        <>
+          {/* Overlay noir semi-transparent */}
+          <div
+            className={styles.modalOverlay}
+            onClick={handleCloseDetailsForm}
+          />
+
+          {/* Conteneur de la modale (centré) */}
+          <div className={styles.modalContainer}>
+            <ScanDetailsForm
+              installationId={installationId}
+              directoryItem={scanResult.directoryItem || null}
+              barcode={scannedBarcode}
+              currentQuantity={scanResult.currentQuantity}
+              onClose={handleCloseDetailsForm}
+              onSuccess={handleActionSuccess}
+            />
+          </div>
+        </>
       )}
     </div>
   );
