@@ -10,7 +10,8 @@ import {
 } from "@/lib/validations/auth";
 import { AuthController } from "@/lib/controllers/AuthController";
 import { ActionResponse, ErrorCodes } from "@/lib/types";
-
+import {getAuthHeaders} from "../utils/auth";
+import { auth } from "@/lib/auth/auth";
 // ================
 // SERVER ACTIONS D'AUTHENTIFICATION
 // ================
@@ -49,8 +50,13 @@ export async function signup(
     return result;
   }
 
-  // Rediriger vers la page de vérification de l'email
-  redirect(`/verification-email?email=${encodeURIComponent(validation.data.email)}`);
+  // Attendre que la session soit disponible
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    return { success: false, error: "Session non créée" };
+  }
+    redirect("/installations");
 }
 
 // Action pour la connexion
@@ -97,6 +103,13 @@ export async function signin(
   }
 
   console.log("✅ [SERVER ACTION] Connexion réussie, redirection vers /installations");
+  // Attendre que la session soit disponible
+  const headers = await getAuthHeaders();
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    return { success: false, error: "Session non créée" };
+  }
+  
   // Rediriger directement vers /installations après une connexion réussie
   redirect("/installations");
 }
