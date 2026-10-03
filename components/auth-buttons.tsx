@@ -17,9 +17,19 @@ export default function AuthButtons() {
   const isConnected = !!user;
   const router = useRouter();
 
+  console.log("🔄 [AuthButtons] Rendering. Session active:", isConnected, {
+    userEmail: user?.email,
+  });
+
   const handleLogout = async () => {
-    await signout();
-    router.push("/");
+    console.log("🔐 [AuthButtons] Clic sur Se déconnecter. Début de la déconnexion...");
+    try {
+      await signout();
+      console.log("✅ [AuthButtons] Déconnexion réussie. Redirection vers /");
+      router.push("/");
+    } catch (error) {
+      console.error("❌ [AuthButtons] Échec de la déconnexion:", error);
+    }
   };
 
   return (
