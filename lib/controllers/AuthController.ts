@@ -154,6 +154,7 @@ export class AuthController {
     return resetPasswordService({
       token: data.token.trim(),
       password: data.password,
+      confirmPassword: data.confirmPassword,
     });
   }
 
