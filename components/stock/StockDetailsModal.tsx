@@ -119,7 +119,7 @@ export default function StockDetailsModal({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  }, []);
+  }, [setFormData]);
 
   // Mettre à jour le prix (convertir en float)
   const handlePriceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,7 +127,7 @@ export default function StockDetailsModal({
     // Remplacer la virgule par un point pour la conversion
     const numericValue = value.replace(',', '.');
     setFormData(prev => ({ ...prev, [name]: numericValue }));
-  }, []);
+  }, [setFormData]);
 
   // Basculer entre mode édition et affichage
   const toggleEditing = useCallback(() => {
@@ -188,16 +188,16 @@ export default function StockDetailsModal({
   const handleQuantityInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 1;
     setQuantityInput(Math.abs(value));
-  }, []);
+  }, [setQuantityInput]);
 
   // Handler pour modifier l'input avec les boutons +/- 
   const handleQuantityInputIncrement = useCallback(() => {
     setQuantityInput(prev => Math.max(1, prev + 1));
-  }, []);
+  }, [setQuantityInput]);
 
   const handleQuantityInputDecrement = useCallback(() => {
     setQuantityInput(prev => Math.max(1, prev - 1));
-  }, []);
+  }, [setQuantityInput]);
 
   // Handler pour appliquer l'ajustement de quantité
   const handleApplyQuantityAdjustment = useCallback(async (adjustment: number) => {
@@ -308,12 +308,12 @@ export default function StockDetailsModal({
   const handleMoveQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 1;
     setMoveData(prev => ({ ...prev, quantityToMove: Math.max(1, Math.min(value, localQuantity)) }));
-  }, [localQuantity]);
+  }, [localQuantity, setMoveData]);
 
   // Handler pour changer l'installation cible
   const handleInstallationChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setMoveData(prev => ({ ...prev, selectedInstallationId: e.target.value }));
-  }, []);
+  }, [setMoveData]);
 
   // Fusionner la classe CSS en fonction de l'état
   const getExpiryStatusClass = useCallback(() => {
