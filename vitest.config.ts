@@ -12,7 +12,6 @@ export default defineConfig({
     },
   },
   test: {
-    // Le test cassé historique reste exclu (liste noire de la carte .vibe/plans/code-map.md)
-    exclude: ["**/node_modules/**", "**/dist/**", "test/translations.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
   },
 });

@@ -7,7 +7,6 @@ interface ServerSession {
     id: string;
     email: string;
     name?: string;
-    role?: string;
   } | null;
 }
 
@@ -28,7 +27,6 @@ export async function ServerSessionProvider({
           id: session.user.id,
           email: session.user.email,
           name: session.user.name,
-          role: session.user.role,
         }
       : null,
   };

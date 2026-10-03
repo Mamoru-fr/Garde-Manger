@@ -75,7 +75,7 @@ export class AuthController {
   // Contrôleur pour l'inscription
   static async signup(data: SignUpInput): Promise<ActionResponse<{ userId: string }>> {
     const emailCheck = checkEmail(data.email);
-    if ("success" in emailCheck && emailCheck.success === false) {
+    if (!("email" in emailCheck)) {
       return emailCheck;
     }
 
@@ -107,7 +107,7 @@ export class AuthController {
     console.log("🟡 [CONTROLLER] Data:", { email: data.email, password: "***" });
 
     const emailCheck = checkEmail(data.email);
-    if ("success" in emailCheck && emailCheck.success === false) {
+    if (!("email" in emailCheck)) {
       console.log("❌ [CONTROLLER] Email invalide");
       return emailCheck;
     }
@@ -132,7 +132,7 @@ export class AuthController {
   // Contrôleur pour la demande de réinitialisation du mot de passe
   static async forgotPassword(data: ForgotPasswordInput): Promise<ActionResponse<void>> {
     const emailCheck = checkEmail(data.email);
-    if ("success" in emailCheck && emailCheck.success === false) {
+    if (!("email" in emailCheck)) {
       return emailCheck;
     }
 
@@ -170,7 +170,7 @@ export class AuthController {
   // Contrôleur pour renvoyer un email de vérification
   static async resendVerificationEmail(email: string): Promise<ActionResponse<void>> {
     const emailCheck = checkEmail(email);
-    if ("success" in emailCheck && emailCheck.success === false) {
+    if (!("email" in emailCheck)) {
       return emailCheck;
     }
 
