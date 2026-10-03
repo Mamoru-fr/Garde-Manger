@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signin } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
@@ -13,34 +13,48 @@ import { AlertTriangle, CheckCircle } from "lucide-react";
 // Better-Auth qui fait toute la connexion (session + cookies). La
 // redirection vers /installations est portée par l'action en cas de succès.
 
+type FormMessage = { text: string; type: "error" | "success" };
+
 export default function SignInForm() {
   const searchParams = useSearchParams();
-  const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Gérer les messages depuis l'URL (vérification email, reset mot de passe)
-  useEffect(() => {
+  // Message dérivé de l'URL (vérification email, reset mot de passe) :
+  // dérivation pendant le rendu (pattern React — plus de setState-in-effect)
+  const urlMessage = useMemo<FormMessage | null>(() => {
     const error = searchParams.get("error");
     const verified = searchParams.get("verified");
     const reset = searchParams.get("reset");
 
     if (error && error !== "true") {
-      setMessage({
+      return {
         text: decodeURIComponent(error),
         type: "error",
-      });
-    } else if (verified === "success") {
-      setMessage({
+      };
+    }
+    if (verified === "success") {
+      return {
         text: "Email vérifié avec succès ! Tu peux maintenant te connecter.",
         type: "success",
-      });
-    } else if (reset === "success") {
-      setMessage({
+      };
+    }
+    if (reset === "success") {
+      return {
         text: "Mot de passe réinitialisé avec succès ! Tu peux maintenant te connecter.",
         type: "success",
-      });
+      };
     }
+    return null;
   }, [searchParams]);
+
+  const [message, setMessage] = useState<FormMessage | null>(urlMessage);
+  // Ajuster l'état quand le message d'URL change (pattern officiel React
+  // « ajuster l'état pendant le rendu » — pas d'effet, pas de flash)
+  const [prevUrlMessage, setPrevUrlMessage] = useState(urlMessage);
+  if (urlMessage !== prevUrlMessage) {
+    setPrevUrlMessage(urlMessage);
+    setMessage(urlMessage);
+  }
 
   // Soumettre le formulaire — la chaîne ACS fait la vérification et
   // Better-Auth la connexion ; l'action redirige vers /installations.

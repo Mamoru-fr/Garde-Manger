@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "react/no-unescaped-entities": "off",
+      // Bloc 2:1 : les `any` explicites (~60 sites, dette ancienne) passent en
+      // warning — élimination planifiée au bloc 8. Réactivable en supprimant
+      // cette ligne (retour à "error").
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   // Override default ignores of eslint-config-next.
@@ -19,6 +23,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scripts de maintenance Node hors app (require() légitime) :
+    "scripts/*.js",
   ]),
 ]);
 

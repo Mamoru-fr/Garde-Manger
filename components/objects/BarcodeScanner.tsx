@@ -33,12 +33,12 @@ export default function BarcodeScanner({
   useEffect(() => {
     const checkSupport = async () => {
       try {
-        // @ts-ignore - BarcodeDetector peut ne pas être défini dans les types globaux
+        // @ts-expect-error - BarcodeDetector peut ne pas être défini dans les types globaux
         const supported = "BarcodeDetector" in window;
         setIsSupported(supported);
         
         if (supported) {
-          // @ts-ignore
+          // @ts-expect-error - BarcodeDetector peut ne pas être défini dans les types globaux
           barcodeDetectorRef.current = new BarcodeDetector({
             formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"],
           });
