@@ -1,56 +1,46 @@
-// Utilitaire pour obtenir la session Better-Auth
-// UNIQUEMENT POUR LES SERVER COMPONENTS
-// Ce fichier ne doit JAMAIS être importé dans un Client Component
+// ============================================
+// Accès à la session Better-Auth côté serveur
+// ============================================
+// UNIQUEMENT POUR LES SERVER COMPONENTS, server actions et route handlers.
+// Ce fichier ne doit JAMAIS être importé dans un Client Component —
+// côté client, c'est lib/auth/auth-client.ts (authClient).
+//
+// Pas de cache maison ici : le cache officiel de Better-Auth
+// (session.cookieCache, cf. lib/auth/auth.ts) fait ce travail correctement.
+// L'ancien cache de module empoisonnait le process entier : la première
+// requête sans session figeait un `null` pour toutes les suivantes, même
+// après un login réussi en base.
 
 import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
-import { cache } from "react";
 
 // Vérification pour empêcher l'utilisation côté client
 if (typeof window !== "undefined") {
   throw new Error(
     "❌ [Auth] Ce module (lib/utils/auth.ts) ne peut être utilisé que côté serveur. " +
-    "Utilisez un Server Component ou déplacez cette logique dans un api route."
+    "Utilise un Server Component, une server action ou une api route — " +
+    "ou lib/auth/auth-client.ts côté client."
   );
 }
 
-// Stocker la session en cache pour éviter les requêtes SQL en double
-let cachedSession: Promise<any> | null = null;
-
 /**
- * Obtenir la session utilisateur actuelle pour les Server Components
- * Utilise un cache pour éviter les requêtes SQL en double dans une même requête HTTP
+ * Les headers de la requête courante — nécessaires à Better-Auth pour
+ * lire les cookies de session (doc : auth.api.getSession({ headers })).
  */
-export async function getCurrentSession() {
-  // Créer la promesse une seule fois
-  if (!cachedSession) {
-    cachedSession = (async () => {
-      try {
-        // On utilise les headers de la requête pour que nextCookies() puisse accéder aux cookies
-        const h = await headers();
-        return await auth.api.getSession({ headers: h });
-      } catch (error) {
-        console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
-        return null;
-      }
-    })();
-  }
-  
-  // Attendre le résultat
-  try {
-    return await cachedSession;
-  } catch (error) {
-    console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
-    return null;
-  }
-}
-
-// Fonction pour obtenir les headers de la requête actuelle
 export async function getAuthHeaders() {
   return await headers();
 }
 
-// Réinitialiser le cache (utile pour les tests ou lorsque la session change)
-export function resetSessionCache(): void {
-  cachedSession = null;
+/**
+ * La session Better-Auth de la requête courante, sans détour.
+ * Retourne null si non connecté (la session expire, l'utilisateur se
+ * déconnecte… à chaque requête on relit la vérité, plus de valeur figée).
+ */
+export async function getCurrentSession() {
+  try {
+    return await auth.api.getSession({ headers: await headers() });
+  } catch (error) {
+    console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
+    return null;
+  }
 }

@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { verifyEmail } from "@/lib/actions/AuthActions";
+import { authClient } from "@/lib/auth/auth-client";
+import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
 import { Button, Form } from "@/components/shared";
 import { CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+
+// Vérification d'email via le client officiel Better-Auth.
+// Le lien de l'email pointe vers le handler /api/auth/verify-email, qui
+// vérifie le token automatiquement puis redirige — la page gère les états
+// et propose la vérification manuelle + le renvoi (vrai appel, plus de TODO).
 
 export default function VerificationEmailForm() {
   const searchParams = useSearchParams();
@@ -15,44 +21,50 @@ export default function VerificationEmailForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  // Si un token est présent, vérifier automatiquement
+  // Vérifier le token (bouton « Vérifier manuellement »)
   const handleAutoVerify = async () => {
-    if (token) {
-      setIsLoading(true);
-      const formData = new FormData();
-      formData.append("token", token);
-      const result = await verifyEmail(null, formData);
-      
-      if (result.success) {
-        setMessage({
-          text: "Ton email a été vérifié avec succès ! Tu peux maintenant te connecter.",
-          type: "success",
-        });
-      } else {
-        setMessage({
-          text: result.error || "Erreur lors de la vérification",
-          type: "error",
-        });
-      }
-      setIsLoading(false);
+    if (!token) return;
+
+    setIsLoading(true);
+    const { error } = await authClient.verifyEmail({
+      query: { token },
+    });
+
+    if (error) {
+      setMessage({
+        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
+        type: "error",
+      });
+    } else {
+      setMessage({
+        text: "Ton email a été vérifié avec succès ! Tu peux maintenant te connecter.",
+        type: "success",
+      });
     }
+    setIsLoading(false);
   };
 
-  // Vérifier automatiquement au chargement
-  // Note: useEffect ne peut pas être async, donc on utilise un IIFE
-  // useEffect(() => { if (token) handleAutoVerify(); }, [token]);
-  // À la place, on va déclencher la vérification manuellement
-
-  // Renvoyer un email de vérification
+  // Renvoyer l'email de vérification (vrai appel Better-Auth)
   const handleResend = async () => {
     if (!email) return;
-    
+
     setIsResending(true);
-    // TODO: Ajouter une action pour renvoyer l'email de vérification
-    setMessage({
-      text: "Un nouvel email de vérification a été envoyé.",
-      type: "success",
+    const { error } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: "/connexion",
     });
+
+    if (error) {
+      setMessage({
+        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
+        type: "error",
+      });
+    } else {
+      setMessage({
+        text: "Un nouvel email de vérification a été envoyé.",
+        type: "success",
+      });
+    }
     setIsResending(false);
   };
 
@@ -86,7 +98,7 @@ export default function VerificationEmailForm() {
               </p>
               <div className="flex gap-sm">
                 <Button variant="outline" onClick={handleResend} isLoading={isResending}>
-                  Renvoyer l'email
+                  Renvoyer l&apos;email
                 </Button>
                 <Button variant="primary" onClick={() => window.location.href = "/connexion"}>
                   Retour à la connexion
@@ -94,7 +106,7 @@ export default function VerificationEmailForm() {
               </div>
             </div>
           )}
-          
+
           {/* Si aucun paramètre */}
           {!email && !token && (
             <div className="flex flex-col items-center gap-md">

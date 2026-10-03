@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { forgotPassword } from "@/lib/actions/AuthActions";
+import { authClient } from "@/lib/auth/auth-client";
+import { ForgotPasswordSchema } from "@/lib/validations/auth";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import { CheckCircle } from "lucide-react";
+
+// Demande de réinitialisation via le client officiel Better-Auth.
+// redirectTo : c'est LÀ que Better-Auth envoie l'utilisateur quand il clique
+// sur le lien de l'email (la page lit le token dans l'URL). L'ancien code
+// redirigeait vers /forgot-password/confirm — une page qui n'existe pas.
 
 export default function ForgotPasswordForm() {
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
@@ -14,22 +20,43 @@ export default function ForgotPasswordForm() {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
-    
+
     const formData = new FormData(e.currentTarget);
-    const result = await forgotPassword(null, formData);
-    
-    if (!result.success) {
+    const email = formData.get("email") as string;
+
+    // Validation Zod côté client (même schéma que l'ancienne server action)
+    const validation = ForgotPasswordSchema.safeParse({ email });
+    if (!validation.success) {
+      const fieldErrors = validation.error.flatten().fieldErrors;
       setMessage({
-        text: result.error || "Erreur lors de la demande",
+        text: fieldErrors
+          ? Object.values(fieldErrors)[0][0]
+          : "Données invalides",
+        type: "error",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await authClient.forgetPassword({
+      email: validation.data.email,
+      redirectTo: "/mot-de-passe/reset",
+    });
+
+    if (error) {
+      setMessage({
+        text: "Une erreur est survenue lors de l'envoi. Réessaie dans un instant.",
         type: "error",
       });
     } else {
+      // Même comportement que Better-Auth : pas de révélation sur l'existence
+      // du compte — on affiche le message de succès quoi qu'il arrive.
       setMessage({
         text: "Un email de réinitialisation a été envoyé à ton adresse. Vérifie ta boîte de réception.",
         type: "success",
       });
     }
-    
+
     setIsLoading(false);
   };
 

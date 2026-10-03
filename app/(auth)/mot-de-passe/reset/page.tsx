@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/utils/auth";
-import VerificationEmailForm from "./VerificationEmailForm";
+import ResetPasswordForm from "./ResetPasswordForm";
 
 export const dynamic = 'force-dynamic';
 
-export default async function VerificationEmailPage() {
+export default async function ResetPasswordPage() {
   // Vérifier si l'utilisateur est déjà connecté
   const session = await getCurrentSession();
   if (session?.user) {
@@ -13,15 +13,15 @@ export default async function VerificationEmailPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="mb-lg text-center">
+      <div className="mb-lg">
         <h2 className="text-2xl font-bold text-primary-dark mb-sm">
-          Vérifie ton email
+          Nouveau mot de passe
         </h2>
         <p className="text-muted">
-          Nous avons envoyé un lien de vérification à ton adresse email.
+          Choisis un nouveau mot de passe pour ton compte.
         </p>
       </div>
-      <VerificationEmailForm />
+      <ResetPasswordForm />
     </div>
   );
 }

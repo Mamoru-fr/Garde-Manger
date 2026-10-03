@@ -1,37 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
-import { SignUpSchema } from "@/lib/validations/auth";
+import { ResetPasswordSchema } from "@/lib/validations/auth";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
-// Inscription via le client officiel Better-Auth (doc : authentication/email-password).
-// sendOnSignUp est actif dans la config (lib/auth/auth.ts) : l'email de vérification
-// part automatiquement. Le cookie de session est posé par le handler /api/auth/*.
+// Réinitialisation du mot de passe via le client officiel Better-Auth.
+// L'utilisateur arrive ici en cliquant sur le lien de l'email : le token est
+// passé dans l'URL par le handler /api/auth/reset-password/:token (callbackURL).
+// C'était la page manquante du flux : le lien de l'email n'aboutissait nulle part.
 
-export default function SignUpForm() {
+export default function ResetPasswordForm() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const token = searchParams.get("token");
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Soumettre le formulaire — authClient.signUp.email fait tout :
-  // appel /api/auth/sign-up/email, pose du cookie, redirection (callbackURL).
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    const name = formData.get("name") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
 
-    // Validation Zod côté client (même schéma que l'ancienne server action)
-    const validation = SignUpSchema.safeParse({ email, password, name });
+    // Validation Zod côté client (même schéma que l'ancienne server action :
+    // le refine vérifie que les deux mots de passe correspondent)
+    const validation = ResetPasswordSchema.safeParse({
+      token: token ?? "",
+      password,
+      confirmPassword,
+    });
     if (!validation.success) {
       const fieldErrors = validation.error.flatten().fieldErrors;
       setMessage({
@@ -44,11 +49,9 @@ export default function SignUpForm() {
       return;
     }
 
-    const { error } = await authClient.signUp.email({
-      name: validation.data.name,
-      email: validation.data.email,
-      password: validation.data.password,
-      callbackURL: "/installations",
+    const { error } = await authClient.resetPassword({
+      newPassword: validation.data.password,
+      token: validation.data.token,
     });
 
     if (error) {
@@ -60,23 +63,29 @@ export default function SignUpForm() {
       return;
     }
 
-    // Redirection explicite (le callbackURL de Better-Auth vise la même cible)
-    router.push("/installations");
+    // Succès : retour à la connexion avec le message qui va bien
+    router.push("/connexion?reset=success");
   };
 
-  return (
-    <div className="w-full max-w-md">
-      <div className="mb-lg">
-        <h2 className="text-2xl font-bold text-primary-dark mb-sm">
-          Créer un compte
-        </h2>
+  if (!token) {
+    return (
+      <div className="text-center flex flex-col items-center gap-md">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
+          <AlertTriangle className="w-8 h-8 text-red-600" />
+        </div>
         <p className="text-muted">
-          Rejoins Garde-Manger pour gérer tes stocks facilement.
+          Lien de réinitialisation invalide ou expiré. Demande un nouvel email.
         </p>
+        <Link href="/mot-de-passe/oublie" className="text-primary hover:underline">
+          Refaire une demande
+        </Link>
       </div>
+    );
+  }
 
-      {/* Messages */}
-      {message && (
+  return (
+    <>
+      {message?.type === "error" && (
         <div className="mb-lg p-md rounded-md flex items-start gap-sm bg-red-50 border border-red-400">
           <AlertTriangle className="shrink-0 mt-0.5 text-red-600 w-5 h-5" />
           <p className="leading-relaxed text-sm text-red-800">
@@ -88,26 +97,7 @@ export default function SignUpForm() {
       <Form onSubmit={handleSubmit} className="mb-md">
         <FormField>
           <Input
-            label="Nom"
-            name="name"
-            type="text"
-            placeholder="Ton nom"
-            required
-            hint="Ton nom sera visible aux autres utilisateurs de tes installations"
-          />
-        </FormField>
-        <FormField>
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            placeholder="ton@email.com"
-            required
-          />
-        </FormField>
-        <FormField>
-          <Input
-            label="Mot de passe"
+            label="Nouveau mot de passe"
             name="password"
             type="password"
             placeholder="Un mot de passe sécurisé"
@@ -115,19 +105,27 @@ export default function SignUpForm() {
             hint="Minimum 8 caractères"
           />
         </FormField>
+        <FormField>
+          <Input
+            label="Confirmer le mot de passe"
+            name="confirmPassword"
+            type="password"
+            placeholder="Encore une fois"
+            required
+          />
+        </FormField>
         <FormActions className="justify-end">
           <Button type="submit" variant="primary" isLoading={isLoading}>
-            {isLoading ? "Création en cours..." : "Créer mon compte"}
+            {isLoading ? "Réinitialisation..." : "Réinitialiser mon mot de passe"}
           </Button>
         </FormActions>
       </Form>
 
       <p className="text-center text-muted">
-        Tu as déjà un compte ?{" "}
         <Link href="/connexion" className="text-primary hover:underline">
-          Connecte-toi
+          Retour à la connexion
         </Link>
       </p>
-    </div>
+    </>
   );
 }

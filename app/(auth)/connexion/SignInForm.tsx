@@ -2,17 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { signin } from "@/lib/actions/AuthActions";
+import { authClient } from "@/lib/auth/auth-client";
+import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
+import { SignInSchema } from "@/lib/validations/auth";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle } from "lucide-react";
+
+// Connexion via le client officiel Better-Auth (doc : authentication/email-password).
+// Le cookie de session est posé par le handler /api/auth/* dans la réponse HTTP —
+// c'est lui qui marchait à côté de l'ancienne server action (les RSC ne peuvent
+// pas poser de cookies). Plus de chaîne AuthActions → AuthController → AuthService.
 
 export default function SignInForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Gérer les messages depuis l'URL
+  // Gérer les messages depuis l'URL (vérification email, reset mot de passe)
   useEffect(() => {
     const error = searchParams.get("error");
     const verified = searchParams.get("verified");
@@ -36,33 +44,48 @@ export default function SignInForm() {
     }
   }, [searchParams]);
 
-  // Soumettre le formulaire
+  // Soumettre le formulaire — authClient.signIn.email fait tout :
+  // appel /api/auth/sign-in/email, pose du cookie, redirection (callbackURL).
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
-    
-    console.log("🔵 [CLIENT] Début de la soumission du formulaire de connexion");
-    
+    setIsLoading(true);
+
     const formData = new FormData(e.currentTarget);
-    console.log("🔵 [CLIENT] FormData:", {
-      email: formData.get("email"),
-      password: formData.get("password") ? "***" : "empty"
-    });
-    
-    console.log("🔵 [CLIENT] Appel de signin()");
-    const result = await signin(null, formData);
-    console.log("🔵 [CLIENT] Résultat de signin():", result);
-    
-    if (!result.success) {
-      console.log("❌ [CLIENT] Erreur de connexion:", result.error);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    // Validation Zod côté client (même schéma que l'ancienne server action)
+    const validation = SignInSchema.safeParse({ email, password });
+    if (!validation.success) {
+      const fieldErrors = validation.error.flatten().fieldErrors;
       setMessage({
-        text: result.error || "Erreur de connexion",
+        text: fieldErrors
+          ? Object.values(fieldErrors)[0][0]
+          : "Données invalides",
         type: "error",
       });
-    } else {
-      console.log("✅ [CLIENT] Connexion réussie, en attente de redirection...");
+      setIsLoading(false);
+      return;
     }
-    // Note: La redirection est gérée par le server action signin
+
+    const { error } = await authClient.signIn.email({
+      email: validation.data.email,
+      password: validation.data.password,
+      callbackURL: "/installations",
+    });
+
+    if (error) {
+      setMessage({
+        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
+        type: "error",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Redirection explicite (le callbackURL de Better-Auth vise la même cible)
+    router.push("/installations");
   };
 
   return (
@@ -120,7 +143,7 @@ export default function SignInForm() {
           />
         </FormField>
         <FormActions className="justify-end">
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" isLoading={isLoading}>
             Se connecter
           </Button>
         </FormActions>
@@ -133,7 +156,7 @@ export default function SignInForm() {
       </div>
 
       <p className="text-center text-muted">
-        Tu n'as pas de compte ?{" "}
+        Tu n&apos;as pas de compte ?{" "}
         <Link href="/inscription" className="text-primary hover:underline">
           Crée-en un
         </Link>
