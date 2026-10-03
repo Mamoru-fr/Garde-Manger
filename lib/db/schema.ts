@@ -9,6 +9,8 @@ import {
   index,
   jsonb,
   foreignKey,
+  doublePrecision,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, Many, One } from "drizzle-orm";
 
@@ -50,6 +52,8 @@ export const categoryEnum = pgEnum("category", [
 ]);
 
 // Unités de mesure
+// Spec générique/poids §3.1 : étendues (milligramme, tonne, centilitre,
+// canette) et organisées en familles avec facteur vers l'unité de base.
 export const unitEnum = pgEnum("unit", [
   "litre",
   "millilitre",
@@ -59,6 +63,20 @@ export const unitEnum = pgEnum("unit", [
   "boîte",
   "sachet",
   "bouteille",
+  "autre",
+  "milligramme",
+  "tonne",
+  "centilitre",
+  "canette",
+]);
+
+// Familles d'unités (spec générique/poids §3.1) :
+// masse (base gramme), volume (base millilitre),
+// discrete (aucune conversion), autre (filet).
+export const unitFamilyEnum = pgEnum("unit_family", [
+  "masse",
+  "volume",
+  "discrete",
   "autre",
 ]);
 
@@ -213,6 +231,11 @@ export const units = pgTable("units", {
   name: text("name").notNull().unique(),
   symbol: text("symbol").notNull(),
   type: unitEnum("type").notNull(),
+  // Spec générique/poids §3.1 : famille + facteur vers l'unité de base
+  // de la famille (1 kg = 1000 g ; null pour les familles sans conversion).
+  family: unitFamilyEnum("family"),
+  conversionFactor: doublePrecision("conversion_factor"),
+  isBase: boolean("is_base").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -271,6 +294,9 @@ export const objectDirectory = pgTable("object_directory", {
   imageUrl: text("image_url"),  // URL de l'image du produit
   defaultQuantity: integer("default_quantity").default(1),
   isReadOnly: boolean("is_read_only").default(false),  // ✅ Verrouillage pour les objets OpenFoodFacts
+  // Spec générique/poids §2.1 : la fiche générique porte son étalon —
+  // la famille d'unité dans laquelle elle se compte (« le riz se compte en masse »).
+  unitFamily: unitFamilyEnum("unit_family"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => {
@@ -283,12 +309,67 @@ export const objectDirectory = pgTable("object_directory", {
   ];
 });
 
+// ============================================================================
+// FICHES DÉTAIL (VARIANTES) — spec générique/poids §2.2
+// Informations produit par marque : marque, Nutri-Score, nutriments, image.
+// Référence GLOBALE partagée entre tous les utilisateurs (§6).
+// Ne porte JAMAIS de quantité — la quantité vit sur la fiche générique.
+// ============================================================================
+export const productVariants = pgTable("product_variants", {
+  id: text("id").primaryKey(),
+  genericDirectoryId: text("generic_directory_id")
+    .notNull()
+    .references(() => objectDirectory.id, { onDelete: "cascade" }),
+  brand: text("brand"),  // Marque (ex. "Carrefour", "Lidl") ; null = sans marque (vrac)
+  nutriscore: text("nutriscore"),  // Ex. "A", "B", "C", "D", "E"
+  nutrients: jsonb("nutrients"),  // Spec §8 : JSONB, structure flexible héritée d'OpenFoodFacts
+  imageUrl: text("image_url"),
+  openFoodFactsId: text("open_food_facts_id"),
+  isReadOnly: boolean("is_read_only").default(false),  // Verrou produits OpenFoodFacts (descend depuis le directory)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => {
+  return [
+    index("product_variants_generic_idx").on(table.genericDirectoryId),
+    index("product_variants_open_food_facts_idx").on(table.openFoodFactsId),
+  ];
+});
+
+// ============================================================================
+// PRÉFÉRENCES D'AFFICHAGE DES QUANTITÉS — spec générique/poids §4.2
+// « Lisibilité des quantités » dans le profil utilisateur : l'unité
+// d'affichage choisie PAR FAMILLE, globale à toutes les fiches de la
+// famille (dans le périmètre du seuil de lisibilité).
+// ============================================================================
+export const userDisplayPreferences = pgTable("user_display_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  family: unitFamilyEnum("family").notNull(),
+  unitId: text("unit_id")
+    .notNull()
+    .references(() => units.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return [
+    uniqueIndex("user_display_preferences_user_family_idx").on(table.userId, table.family),
+  ];
+});
+
 // Annuaire des codes-barres (lien avec l'annuaire des objets)
 export const barcodeDirectory = pgTable("barcode_directory", {
   id: text("id").primaryKey(),
   objectDirectoryId: text("object_directory_id")
     .notNull()
     .references(() => objectDirectory.id, { onDelete: "cascade" }),
+  // Spec générique/poids §5 : un code-barres identifie le produit de marque
+  // (la variante), jamais le générique. Chaîne : barcode → variante → générique.
+  // Nullable au bloc 2 : l'ancien lien objectDirectoryId reste en place
+  // jusqu'à la bascule complète (bloc 4).
+  productVariantId: text("product_variant_id").references(() => productVariants.id, {
+    onDelete: "set null",
+  }),
   barcode: text("barcode").notNull().unique(),
   barcodeType: barcodeTypeEnum("barcode_type").default("EAN13"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -308,6 +389,18 @@ export const objectInstallation = pgTable("object_installation", {
     .references(() => objectDirectory.id, { onDelete: "cascade" }),
   quantity: integer("quantity").notNull().default(0),
   location: text("location"),  // Ex: "Étagère 1", "Porte du frigo"
+  // Spec générique/poids §3.2 : le conditionnement vit sur la ligne d'ajout —
+  // {valeur, unité} libres (« 1 kg », « 750 g », « 2 sachets ») avec
+  // équivalent optionnel pour les discrets (« 2 sachets de 250 g »).
+  // L'ancienne colonne quantity (entier) reste jusqu'à la bascule (bloc 5).
+  quantityValue: doublePrecision("quantity_value"),
+  quantityUnitId: text("quantity_unit_id").references(() => units.id, {
+    onDelete: "set null",
+  }),
+  equivalentValue: doublePrecision("equivalent_value"),
+  equivalentUnitId: text("equivalent_unit_id").references(() => units.id, {
+    onDelete: "set null",
+  }),
   // Nouveau: Champs pour le suivi détaillé de chaque achat
   purchaseDate: timestamp("purchase_date"),  // Date d'achat
   expiryDate: timestamp("expiry_date"),  // Date de péremption
@@ -358,6 +451,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   userInstallations: many(userInstallations),
   objectInstallations: many(objectInstallation),
   objectHistory: many(objectHistory),
+  displayPreferences: many(userDisplayPreferences),
 }));
 
 // Alias pour rétrocompatibilité
@@ -471,6 +565,33 @@ export const objectDirectoryRelations = relations(
     }),
     barcodeDirectory: many(barcodeDirectory),
     objectInstallations: many(objectInstallation),
+    variants: many(productVariants),
+  })
+);
+
+// Fiches détail (variantes) — spec générique/poids §2.2
+export const productVariantsRelations = relations(
+  productVariants,
+  ({ one }) => ({
+    genericDirectory: one(objectDirectory, {
+      fields: [productVariants.genericDirectoryId],
+      references: [objectDirectory.id],
+    }),
+  })
+);
+
+// Préférences d'affichage des quantités — spec générique/poids §4.2
+export const userDisplayPreferencesRelations = relations(
+  userDisplayPreferences,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userDisplayPreferences.userId],
+      references: [user.id],
+    }),
+    unit: one(units, {
+      fields: [userDisplayPreferences.unitId],
+      references: [units.id],
+    }),
   })
 );
 
@@ -481,6 +602,11 @@ export const barcodeDirectoryRelations = relations(
     objectDirectory: one(objectDirectory, {
       fields: [barcodeDirectory.objectDirectoryId],
       references: [objectDirectory.id],
+    }),
+    // Spec générique/poids §5 : barcode → variante → générique
+    productVariant: one(productVariants, {
+      fields: [barcodeDirectory.productVariantId],
+      references: [productVariants.id],
     }),
   })
 );
