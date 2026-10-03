@@ -22,13 +22,15 @@
 | Routes/pages | `app/` | Server Components (auth) + Client Components (interactivité) |
 | Actions (entrée) | `lib/actions/` | Server Actions (`AuthActions`, `ObjectActions`, `StockActions`, `DirectoryActions`, `InstallationActions`, `CategoryActions`, `ShopActions`, `signActions`) : valident (Zod), vérifient l'accès, **délèguent** — jamais de logique métier inline |
 | Controllers (orchestration) | `lib/controllers/` | `AuthController`, `InstallationController` (dont `checkAccess`), `ObjectController` |
-| Services (métier + DB) | `lib/services/` | `AuthService`, `DirectoryService` (annuaire + OpenFoodFacts v3), `InstallationService`, `ObjectService` |
+| Services (métier + DB) | `lib/services/` | `AuthService`, `DirectoryService` (annuaire + OpenFoodFacts v3), `InstallationService`, `ObjectService`, `QuantityService` (conversion + agrégation des quantités, spec §3.3 — **pur**, testable sans DB), `StockViewService` (construction des fiches génériques — **pur**), `StockQueryService` (chargement DB + délégation aux services purs) |
 | Schéma | `lib/db/schema.ts` | Drizzle complet : enums, index, relations |
 | UI | `components/` | stock, objects, installations, scanner, modales (CSS modules, thème « café ») |
 | Types | `lib/types/` | types partagés |
 | Validations | `lib/validations/` | schémas Zod |
 
 **Interdits** : court-circuiter les couches (composant → service direct, logique métier dans une action, SQL inline). Toute évolution de schéma passe par drizzle-kit (`db:generate` → `db:migrate`). Prix stockés en centimes (entiers).
+
+**Pur vs data (blocs 2-3)** : les services de calcul (`QuantityService`, `StockViewService`) n'importent jamais la DB — `lib/db/drizzle.ts` crée son client Neon **au chargement du module**, donc tout import de DB dans un fichier testé par Vitest fait planter le test. Les services data (`StockQueryService`…) chargent puis délèguent. Les types de la spec (`UnitFamily`, `QuantityUnit`, `DisplayPreferences`, `QuantityEntry`, `AggregationResult`) vivent dans `QuantityService` — source de vérité, pas de ré-export.
 
 **Frontière server/client** : scan et modales côté client ; toute écriture traverse une Server Action.
 
@@ -48,6 +50,8 @@
 - **Instances** (`object_installation`) : quantité, emplacement, date d'achat, date de péremption, magasin, prix (centimes), numéro de lot, notes
 - **Historique** (`object_history`) : traçabilité des modifications de quantité
 - Référentiels : catégories, unités, types d'objets hiérarchiques, magasins
+- **Unités à familles (bloc 2)** : table `units` étendue (famille enum `unit_family`, facteur de conversion vers la base de la famille, `isBase` — 13 unités seedées) ; étalon `unitFamily` sur `object_directory` ; saisie moderne de conditionnement sur `object_installation` ; `barcode_directory` pointe désormais une **variante** (nullable)
+- **Variantes & préférences (bloc 2)** : `product_variants` (marque, Nutri-Score, image, OpenFoodFacts, nutriments JSONB, `isReadOnly`) sous `object_directory` ; `user_display_preferences` (préférences d'affichage par famille, spec §4.2)
 
 ## 5. Invariants et conventions
 
@@ -59,7 +63,7 @@
 ## 6. Liste noire (ne jamais copier, ne jamais toucher sans décision explicite)
 
 - `content/database_types/` — types résiduels d'un autre projet (ride, invoice, shift…)
-- `test/translations.test.ts` — test cassé (référence des locales inexistants)
+- `test/translations.test.ts` et `context/SessionContext.tsx` — supprimés au bloc 2:1 (morts) — ne pas les recréer
 - `next.config.js` — coexiste avec `next.config.ts` (Next 16 lit le `.ts`) ; probablement mort, à trancher explicitement
 - `tsconfig.tsbuildinfo` — artefact de build commité, à ajouter au `.gitignore` puis à retirer du suivi
 - `README.md` — template générique create-next-app ; la vraie doc vit dans `.vibe/plans/`
