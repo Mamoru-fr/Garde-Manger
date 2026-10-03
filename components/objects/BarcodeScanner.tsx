@@ -33,7 +33,6 @@ export default function BarcodeScanner({
   useEffect(() => {
     const checkSupport = async () => {
       try {
-        // @ts-expect-error - BarcodeDetector peut ne pas être défini dans les types globaux
         const supported = "BarcodeDetector" in window;
         setIsSupported(supported);
         
