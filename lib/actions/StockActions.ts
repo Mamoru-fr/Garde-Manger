@@ -18,11 +18,8 @@ import {
   and, 
   or, 
   like, 
-  isNull, 
   desc, 
   asc,
-  lte,
-  gte,
   sql,
   count,
   sum
@@ -35,76 +32,20 @@ import {
   canEditStockItem
 } from "@/lib/types/stockTypes";
 import { ErrorCodes } from "@/lib/types";
+import {
+  calculateDaysUntilExpiry,
+  getExpiryStatus,
+} from "@/lib/services/StockViewService";
+import {
+  getExpiryFilter,
+  getGenericStockView,
+} from "@/lib/services/StockQueryService";
+import type {
+  GenericStockFilters,
+  GenericStockActionResult,
+} from "@/lib/services/StockQueryService";
 
 // ========== Helpers ==========
-
-/**
- * Calcule le statut de péremption en fonction du nombre de jours restants
- */
-function getExpiryStatus(daysUntilExpiry: number | null): 'normal' | 'warning' | 'urgent' | 'expired' | 'no_date' {
-  if (daysUntilExpiry === null) return 'no_date';
-  if (daysUntilExpiry < 0) return 'expired';
-  if (daysUntilExpiry <= 3) return 'urgent';
-  if (daysUntilExpiry <= 7) return 'warning';
-  return 'normal';
-}
-
-/**
- * Retourne les conditions de filtre Drizzle pour le statut de péremption
- */
-function getExpiryFilter(expiryStatus: 'warning' | 'urgent' | 'expired' | 'normal' | 'no_date'): any[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  switch (expiryStatus) {
-    case 'expired':
-      return [lte(objectInstallation.expiryDate, today)];
-    case 'urgent':
-      const urgentDate = new Date(today);
-      urgentDate.setDate(urgentDate.getDate() + 3);
-      return [
-        and(
-          gte(objectInstallation.expiryDate, today),
-          lte(objectInstallation.expiryDate, urgentDate)
-        )
-      ];
-    case 'warning':
-      const warningStart = new Date(today);
-      warningStart.setDate(warningStart.getDate() + 3);
-      const warningEnd = new Date(today);
-      warningEnd.setDate(warningEnd.getDate() + 7);
-      return [
-        and(
-          gte(objectInstallation.expiryDate, warningStart),
-          lte(objectInstallation.expiryDate, warningEnd)
-        )
-      ];
-    case 'normal':
-      const normalDate = new Date(today);
-      normalDate.setDate(normalDate.getDate() + 7);
-      return [gte(objectInstallation.expiryDate, normalDate)];
-    case 'no_date':
-      return [isNull(objectInstallation.expiryDate)];
-    default:
-      return [];
-  }
-}
-
-/**
- * Calcule les jours restants jusqu'à la date de péremption
- */
-function calculateDaysUntilExpiry(expiryDate: Date | null): number | null {
-  if (!expiryDate) return null;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const expiry = new Date(expiryDate);
-  expiry.setHours(0, 0, 0, 0);
-  
-  const diffTime = expiry.getTime() - today.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
 
 /**
  * Formate un item de la base de données en StockItemWithExpiryStatus
@@ -491,6 +432,88 @@ export async function getUserStock(
     };
   } catch (error) {
     console.error("[StockActions] Erreur dans getUserStock:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération du stock",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * VUE GÉNÉRIQUE DU STOCK (bloc 3) — fiches génériques sans marque,
+ * quantités agrégées §3.3, affichage selon les préférences §4.2.
+ * L'action orchestre (session) et délègue au service (règle des couches).
+ */
+export async function getUserGenericStock(
+  filters: GenericStockFilters = {}
+): Promise<GenericStockActionResult> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const view = await getGenericStockView(session.user.id, filters);
+    if (!view.ok) {
+      return {
+        success: false,
+        error: "Installation non trouvée ou non accessible",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    return { success: true, cards: view.cards, stats: view.stats };
+  } catch (error) {
+    console.error("[StockActions] Erreur dans getUserGenericStock:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération du stock",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * VUE GÉNÉRIQUE DU STOCK pour une installation (bloc 3).
+ */
+export async function getInstallationGenericStock(
+  installationId: string,
+  filters: GenericStockFilters = {}
+): Promise<GenericStockActionResult> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const view = await getGenericStockView(session.user.id, {
+      ...filters,
+      installationId,
+    });
+    if (!view.ok) {
+      return {
+        success: false,
+        error: "Installation non trouvée ou non accessible",
+        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+      };
+    }
+
+    return { success: true, cards: view.cards, stats: view.stats };
+  } catch (error) {
+    console.error("[StockActions] Erreur dans getInstallationGenericStock:", error);
     return {
       success: false,
       error: "Erreur lors de la récupération du stock",
