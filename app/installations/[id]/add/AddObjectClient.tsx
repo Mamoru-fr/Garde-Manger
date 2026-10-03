@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, ChevronLeft, Barcode } from "lucide-react";
-import { searchProductInDirectory } from "@/lib/actions/DirectoryActions";
+import { Check, X, ChevronLeft, Barcode, Search } from "lucide-react";
+import { searchProductInDirectory, searchProductsByName } from "@/lib/actions/DirectoryActions";
 import { addObjectToInstallation } from "@/lib/actions/ObjectActions";
+import type { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import styles from "./AddObject.module.css";
 
 // Types
@@ -66,6 +67,31 @@ export default function AddObjectClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  // Mode de recherche du produit : par code-barres (flux existant) ou par nom (recherche manuelle)
+  const [searchMode, setSearchMode] = useState<"barcode" | "name">("barcode");
+  // Fiche d'annuaire résolue (ID réel de object_directory) — c'est elle qu'on envoie à l'ajout
+  const [objectDirectoryId, setObjectDirectoryId] = useState<string>("");
+  // Résultats de la recherche par nom (annuaire local, sinon OpenFoodFacts)
+  const [nameResults, setNameResults] = useState<SimplifiedDirectoryItem[]>([]);
+
+  // Appliquer un produit de l'annuaire au formulaire : nom, marque, catégorie,
+  // code-barres éventuel et surtout la fiche résolue (objectDirectoryId réel)
+  const applyDirectoryItem = useCallback(
+    (product: SimplifiedDirectoryItem) => {
+      setObjectDirectoryId(product.id || "");
+      setFormData((prev) => ({
+        ...prev,
+        barcode: product.barcode || prev.barcode,
+        name: product.name || prev.name,
+        brand: product.brand || prev.brand,
+        // Trouver la categorie correspondante dans la liste des categories
+        category_id: product.category
+          ? categories.find(c => c.name.toLowerCase() === product.category?.toLowerCase())?.id || prev.category_id
+          : prev.category_id,
+      }));
+    },
+    [categories]
+  );
 
   // Rechercher un produit par code-barres
   const searchByBarcode = useCallback(
@@ -76,16 +102,7 @@ export default function AddObjectClient({
       try {
         const result = await searchProductInDirectory(barcode);
         if (result.success && result.data) {
-          const product = result.data;
-          setFormData((prev) => ({
-            ...prev,
-            name: product.name || prev.name,
-            brand: product.brand || prev.brand,
-            // Trouver la categorie correspondante dans la liste des categories
-            category_id: product.category
-              ? categories.find(c => c.name.toLowerCase() === product.category?.toLowerCase())?.id || prev.category_id
-              : prev.category_id,
-          }));
+          applyDirectoryItem(result.data);
         }
       } catch (err) {
         console.error("Erreur lors de la recherche du code-barres:", err);
@@ -93,7 +110,53 @@ export default function AddObjectClient({
         setIsSearching(false);
       }
     },
-    [categories]
+    [applyDirectoryItem]
+  );
+
+  // Rechercher des produits par nom (annuaire local d'abord, OpenFoodFacts en repli)
+  const searchProducts = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setNameResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const result = await searchProductsByName(trimmed, 10);
+      setNameResults(result.success && result.data ? result.data : []);
+    } catch (err) {
+      console.error("Erreur lors de la recherche par nom:", err);
+      setNameResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Sélection d'un résultat de la recherche par nom :
+  // - fiche locale : l'ID de l'annuaire est directement utilisable ;
+  // - résultat OpenFoodFacts : on résoud/crée la fiche locale en réutilisant
+  //   le flux code-barres existant (searchProductInDirectory crée la fiche isReadOnly).
+  const handleSelectProduct = useCallback(
+    async (product: SimplifiedDirectoryItem) => {
+      setNameResults([]);
+      setIsSearching(true);
+      try {
+        if (product.barcode) {
+          const result = await searchProductInDirectory(product.barcode);
+          if (result.success && result.data) {
+            applyDirectoryItem(result.data);
+            return;
+          }
+        }
+        applyDirectoryItem(product);
+      } catch (err) {
+        console.error("Erreur lors de la sélection du produit:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [applyDirectoryItem]
   );
 
   // Gerer les changements des inputs
@@ -109,8 +172,22 @@ export default function AddObjectClient({
       if (name === "barcode" && value.length >= 3) {
         searchByBarcode(value);
       }
+
+      // Le code-barres tapé à la main n'est pas encore résolu en fiche d'annuaire
+      if (name === "barcode") {
+        setObjectDirectoryId("");
+      }
+
+      // En mode « Par nom », la saisie déclenche la recherche dès 2 caractères
+      if (searchMode === "name" && name === "name") {
+        if (value.trim().length >= 2) {
+          searchProducts(value);
+        } else {
+          setNameResults([]);
+        }
+      }
     },
-    [searchByBarcode]
+    [searchByBarcode, searchProducts, searchMode]
   );
 
   // Soumettre le formulaire
@@ -138,7 +215,9 @@ export default function AddObjectClient({
         // Convertir les donnees du formulaire en FormData
         const formDataForAction = new FormData();
         formDataForAction.append('installationId', installationId);
-        formDataForAction.append('objectDirectoryId', formData.barcode || '');
+        // Fiche d'annuaire résolue par la recherche (code-barres ou nom) —
+        // pas le code-barres brut : le service attend un ID de object_directory
+        formDataForAction.append('objectDirectoryId', objectDirectoryId || '');
         formDataForAction.append('name', formData.name);
         formDataForAction.append('quantity', formData.quantity.toString());
         
@@ -183,7 +262,7 @@ export default function AddObjectClient({
         setIsSubmitting(false);
       }
     },
-    [formData, installationId, router]
+    [formData, installationId, router, objectDirectoryId]
   );
 
   return (
@@ -199,7 +278,36 @@ export default function AddObjectClient({
         {error && <div className={styles.errorMessage}>{error}</div>}
         {success && <div className={styles.successMessage}>{success}</div>}
 
-        {/* Code-barres */}
+        {/* Bascule de mode : recherche par code-barres ou par nom */}
+        <div className={styles.modeToggle} aria-label="Mode de recherche du produit">
+          <button
+            type="button"
+            className={searchMode === "barcode" ? styles.modeButtonActive : styles.modeButton}
+            onClick={() => {
+              setSearchMode("barcode");
+              setNameResults([]);
+            }}
+            aria-pressed={searchMode === "barcode"}
+          >
+            <Barcode size={16} />
+            Par code-barres
+          </button>
+          <button
+            type="button"
+            className={searchMode === "name" ? styles.modeButtonActive : styles.modeButton}
+            onClick={() => {
+              setSearchMode("name");
+              setNameResults([]);
+            }}
+            aria-pressed={searchMode === "name"}
+          >
+            <Search size={16} />
+            Par nom
+          </button>
+        </div>
+
+        {/* Code-barres (mode code-barres uniquement) */}
+        {searchMode === "barcode" && (
         <div className={styles.formGroup}>
           <label htmlFor="barcode" className={styles.label}>
             <Barcode size={16} />
@@ -218,6 +326,7 @@ export default function AddObjectClient({
           />
           {isSearching && <p className={styles.hint}>Recherche en cours...</p>}
         </div>
+        )}
 
         {/* Nom */}
         <div className={styles.formGroup}>
@@ -230,10 +339,29 @@ export default function AddObjectClient({
             name="name"
             value={formData.name}
             onChange={handleChange}
-            placeholder="Nom de l'objet"
+            placeholder={searchMode === "name" ? "Tapez au moins 2 caracteres pour chercher un produit" : "Nom de l'objet"}
             className={styles.input}
             required
           />
+          {searchMode === "name" && nameResults.length > 0 && (
+            <div className={styles.resultsList} aria-label="Resultats de la recherche par nom">
+              {nameResults.map((product) => (
+                <button
+                  key={`${product.id}-${product.barcode}`}
+                  type="button"
+                  className={styles.resultItem}
+                  onClick={() => handleSelectProduct(product)}
+                >
+                  <span className={styles.resultName}>{product.name}</span>
+                  {product.brand && <span className={styles.resultBrand}>{product.brand}</span>}
+                  <span className={product.barcode ? styles.resultBadgeOff : styles.resultBadgeLocal}>
+                    {product.barcode ? "OpenFoodFacts" : "Annuaire"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {searchMode === "name" && isSearching && <p className={styles.hint}>Recherche en cours...</p>}
         </div>
 
         {/* Quantite et Categorie */}

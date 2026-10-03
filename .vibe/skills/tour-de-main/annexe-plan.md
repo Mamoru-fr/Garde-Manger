@@ -1,6 +1,6 @@
 # Annexe — Le plan avant modification
 
-## Les 5 signaux d'escalade
+## Les 6 signaux d'escalade
 
 Le plan se déclenche quand **2 signaux au moins** sont détectés :
 
@@ -9,6 +9,7 @@ Le plan se déclenche quand **2 signaux au moins** sont détectés :
 3. **Demande ambiguë** — l'intention peut se lire de deux façons, les cas limites ne sont pas tranchés.
 4. **Travail difficilement réversible** — migration de schéma, refactoring structurel, suppression, contrat API public.
 5. **Risque réel d'approche** — plusieurs façons de faire se présentent, avec des compromis différents.
+6. **Diff anormalement ample** — un bug qui se traduit par ~5 fichiers ou plus, une directive qui fait tomber une couche. L'ampleur d'un diff est un signal d'alarme, pas un exploit : un bug coûte 2-5 fichiers ; au-delà, on stoppe et on présente le plan avant d'écrire.
 
 **0 ou 1 signal** : annoncer l'intention en une phrase, puis coder — c'est l'économie de tokens. Pas de cérémonie pour un changement trivial.
 
@@ -42,6 +43,7 @@ Avant tout plan sur une approche non triviale : **diagnostiquer, ne pas coder d'
    - Qu'attend / retourne *réellement* le système visé (schéma exact du payload, accès réels de la plateforme) ?
    - Quel est l'état réel (logs complets) ?
 4. **Documenter les contraintes** avant d'écrire la moindre ligne.
+5. **Reformuler la directive en une phrase** (« ce que je comprends : … — c'est bien ça ? ») quand elle a une portée architecturale ou qu'elle touche un outil. Une directive d'outil est une directive d'infrastructure, jamais un mandat d'architecture ; l'erreur de lecture coûte toujours plus cher que la vérification.
 
 ## Pivot — uniquement sur erreur confirmée
 
@@ -52,6 +54,8 @@ Ne changer d'approche que si les trois sont vrais :
 3. **Plus aucune question à poser d'abord** — la question bloquante est toujours moins chère que le pivot.
 
 Un pivot sans diagnostic en amont fabrique des pivots en cascade : le gouffre à tokens.
+
+*(Leçon Garde-Manger, 03/10 : un bug à 2 fichiers traité en refonte de 19 fichiers — pivot sans diagnostic, plus une directive « utilise la lib » lue comme mandat d'architecture. Les deux fautes que cette annexe existe pour empêcher, commises le même jour.)*
 
 ## Implémentation économe (hygiène des gestes)
 

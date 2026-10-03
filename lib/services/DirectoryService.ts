@@ -4,7 +4,7 @@
 
 import { db } from "@/lib/db/drizzle";
 import { objectDirectory, barcodeDirectory } from "@/lib/db/schema";
-import { eq, or } from "drizzle-orm";
+import { eq, or, ilike } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 
@@ -284,6 +284,56 @@ export async function searchByName(query: string, limit: number = 10): Promise<S
     });
   } catch (error) {
     console.error(`Erreur lors de la recherche par nom:`, error);
+    return [];
+  }
+}
+
+/**
+ * Recherche locale par nom de produit dans l'annuaire (object_directory)
+ * Correspondance partielle insensible à la casse sur le nom ET la marque.
+ * Même signature et même forme de retour que searchByName (OpenFoodFacts)
+ * pour que l'action appelle les deux sources de la même façon.
+ */
+export async function searchByNameLocal(query: string, limit: number = 10): Promise<SimplifiedDirectoryItem[]> {
+  try {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      return [];
+    }
+
+    const pattern = `%${trimmedQuery}%`;
+
+    const results = await db
+      .select({
+        id: objectDirectory.id,
+        name: objectDirectory.name,
+        description: objectDirectory.description,
+        brand: objectDirectory.brand,
+        nutriscore: objectDirectory.nutriscore,
+        openFoodFactsId: objectDirectory.openFoodFactsId,
+        isReadOnly: objectDirectory.isReadOnly,
+      })
+      .from(objectDirectory)
+      .where(
+        or(
+          ilike(objectDirectory.name, pattern),
+          ilike(objectDirectory.brand, pattern),
+        )
+      )
+      .limit(limit);
+
+    return results.map((item) => ({
+      id: item.id,
+      barcode: "", // Recherche par nom : la fiche locale est identifiée par son id, pas par un code-barres
+      name: item.name,
+      brand: item.brand || undefined,
+      description: item.description || undefined,
+      nutriscore: item.nutriscore || undefined,
+      openFoodFactsId: item.openFoodFactsId || undefined,
+      isReadOnly: item.isReadOnly || false,
+    }));
+  } catch (error) {
+    console.error(`[DirectoryService] Erreur dans searchByNameLocal:`, error);
     return [];
   }
 }

@@ -1,5 +1,14 @@
 # Changelog — tour-de-main
 
+## v1.2 — 03/10/2026
+
+- **Règle 8 « Le tech lead tranche »** : la connaissance ne fait pas l'autorité. L'agent a plus de documentation ; Alexis a plus d'expérience du code actuel et du projet. Toute contradiction entre docs/nouveautés et sa parole, ses directives ou l'architecture en place **remonte vers lui** avec options comparées (sa voie vs la nouvelle : gains, risques, possibilités) — décision lui revient, le débat est la méthode, gros impact = approbation directe. Origine : sa remise au clair du 03/10.
+- **Invariant d'architecture** : une directive sur un outil (lib, framework, plugin) est une directive d'**infrastructure**, jamais un mandat d'architecture ; **adopter un outil ≠ adopter l'architecture de l'outil** ; l'architecture ne bouge que sur GO explicite.
+- **6ᵉ signal d'escalade** : diff anormalement ample — un bug à ~5 fichiers ou plus = stop, plan à deux avant d'écrire.
+- **Reformulation en une phrase** de toute directive à portée architecturale (annexe-plan, Phase 0, point 5) — elle se fait valider avant d'exécuter.
+- **Diff minimal** dans la boucle de chantier : l'ampleur d'un diff est un signal, pas un exploit.
+- Origine : leçon du chantier auth Garde-Manger (bug de 2 fichiers → sur-diagnostic + sur-interprétation de directive → refonte de 19 fichiers, chaîne ACS couchée puis reconstruite : 3 allers-retours pour 2 lignes).
+
 ## v1.1 — 02/10/2026
 
 - **Premier retour du terrain intégré** : mesure réelle d'une session Copilot pro (analyse d'Alexis) — explorations non validées ~25 % + pivots sans contexte ~15 % des tokens, pour zéro gain de justesse ; économie potentielle mesurée : 30-40 %.

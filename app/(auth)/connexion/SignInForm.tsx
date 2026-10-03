@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signin } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 
+// Connexion via la chaîne ACS : action → contrôleur → service → Better-Auth.
+// Le formulaire envoie les champs ; la brève vérification (Zod) est faite
+// par l'action, la vérification poussée par le contrôleur, et c'est
+// Better-Auth qui fait toute la connexion (session + cookies). La
+// redirection vers /installations est portée par l'action en cas de succès.
+
 export default function SignInForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Gérer les messages depuis l'URL
+  // Gérer les messages depuis l'URL (vérification email, reset mot de passe)
   useEffect(() => {
     const error = searchParams.get("error");
     const verified = searchParams.get("verified");
@@ -36,33 +42,34 @@ export default function SignInForm() {
     }
   }, [searchParams]);
 
-  // Soumettre le formulaire
+  // Soumettre le formulaire — la chaîne ACS fait la vérification et
+  // Better-Auth la connexion ; l'action redirige vers /installations.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
-    
+    setIsLoading(true);
+
     console.log("🔵 [CLIENT] Début de la soumission du formulaire de connexion");
-    
     const formData = new FormData(e.currentTarget);
     console.log("🔵 [CLIENT] FormData:", {
       email: formData.get("email"),
-      password: formData.get("password") ? "***" : "empty"
+      password: formData.get("password") ? "***" : "empty",
     });
-    
     console.log("🔵 [CLIENT] Appel de signin()");
     const result = await signin(null, formData);
     console.log("🔵 [CLIENT] Résultat de signin():", result);
-    
+
     if (!result.success) {
       console.log("❌ [CLIENT] Erreur de connexion:", result.error);
       setMessage({
         text: result.error || "Erreur de connexion",
         type: "error",
       });
+      setIsLoading(false);
     } else {
       console.log("✅ [CLIENT] Connexion réussie, en attente de redirection...");
     }
-    // Note: La redirection est gérée par le server action signin
+    // En cas de succès : la redirection est portée par l'action
   };
 
   return (
@@ -120,7 +127,7 @@ export default function SignInForm() {
           />
         </FormField>
         <FormActions className="justify-end">
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" isLoading={isLoading}>
             Se connecter
           </Button>
         </FormActions>
