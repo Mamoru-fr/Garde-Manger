@@ -244,3 +244,34 @@ export function buildGenericCards(
 
   return cards;
 }
+
+// --------------------------------------------
+// Helpers de péremption — calculs de vue, purs.
+// (Déplacés depuis StockActions le 03/10 : les calculs de vue de stock
+// vivent dans le service, les actions délèguent — règle des couches.)
+// --------------------------------------------
+
+// Calcule les jours restants jusqu'à la date de péremption.
+export function calculateDaysUntilExpiry(expiryDate: Date | null): number | null {
+  if (!expiryDate) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expiry = new Date(expiryDate);
+  expiry.setHours(0, 0, 0, 0);
+
+  const diffTime = expiry.getTime() - today.getTime();
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// Statut de péremption selon les jours restants (seuils de l'existant).
+export type ExpiryStatus = "normal" | "warning" | "urgent" | "expired" | "no_date";
+
+export function getExpiryStatus(daysUntilExpiry: number | null): ExpiryStatus {
+  if (daysUntilExpiry === null) return "no_date";
+  if (daysUntilExpiry < 0) return "expired";
+  if (daysUntilExpiry <= 3) return "urgent";
+  if (daysUntilExpiry <= 7) return "warning";
+  return "normal";
+}
