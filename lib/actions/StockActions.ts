@@ -194,7 +194,7 @@ export async function getInstallationStock(
     const userRole = accessResult.role;
 
     // 3. Construire la requête principale
-    let query = db
+    const query = db
       .select({
         id: objectInstallation.id,
         installationId: objectInstallation.installationId,
@@ -375,7 +375,7 @@ export async function getUserStock(
     }
 
     // 5. Construire la requête principale (similaire à getInstallationStock mais pour plusieurs installations)
-    let query = db
+    const query = db
       .select({
         id: objectInstallation.id,
         installationId: objectInstallation.installationId,
