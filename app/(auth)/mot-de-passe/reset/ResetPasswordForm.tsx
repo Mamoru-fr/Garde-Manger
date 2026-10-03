@@ -1,22 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
-import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
-import { ResetPasswordSchema } from "@/lib/validations/auth";
+import { useSearchParams } from "next/navigation";
+import { resetPassword } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
-// Réinitialisation du mot de passe via le client officiel Better-Auth.
-// L'utilisateur arrive ici en cliquant sur le lien de l'email : le token est
-// passé dans l'URL par le handler /api/auth/reset-password/:token (callbackURL).
-// C'était la page manquante du flux : le lien de l'email n'aboutissait nulle part.
+// Réinitialisation du mot de passe via la chaîne ACS :
+// action → contrôleur → service → Better-Auth (resetPassword).
+// L'utilisateur arrive ici en cliquant sur le lien de l'email : le token
+// est passé dans l'URL (redirectTo de requestPasswordReset) et transmis à
+// l'action. En cas de succès, l'action redirige vers /connexion?reset=success.
 
 export default function ResetPasswordForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const token = searchParams.get("token");
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,44 +25,18 @@ export default function ResetPasswordForm() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+    formData.append("token", token ?? "");
 
-    // Validation Zod côté client (même schéma que l'ancienne server action :
-    // le refine vérifie que les deux mots de passe correspondent)
-    const validation = ResetPasswordSchema.safeParse({
-      token: token ?? "",
-      password,
-      confirmPassword,
-    });
-    if (!validation.success) {
-      const fieldErrors = validation.error.flatten().fieldErrors;
+    const result = await resetPassword(null, formData);
+
+    if (!result.success) {
       setMessage({
-        text: fieldErrors
-          ? Object.values(fieldErrors)[0][0]
-          : "Données invalides",
+        text: result.error || "Erreur lors de la réinitialisation",
         type: "error",
       });
       setIsLoading(false);
-      return;
     }
-
-    const { error } = await authClient.resetPassword({
-      newPassword: validation.data.password,
-      token: validation.data.token,
-    });
-
-    if (error) {
-      setMessage({
-        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
-        type: "error",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Succès : retour à la connexion avec le message qui va bien
-    router.push("/connexion?reset=success");
+    // En cas de succès : la redirection est portée par l'action
   };
 
   if (!token) {

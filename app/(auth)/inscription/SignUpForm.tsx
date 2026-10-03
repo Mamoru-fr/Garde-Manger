@@ -1,67 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
-import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
-import { SignUpSchema } from "@/lib/validations/auth";
+import { signup } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
-// Inscription via le client officiel Better-Auth (doc : authentication/email-password).
-// sendOnSignUp est actif dans la config (lib/auth/auth.ts) : l'email de vérification
-// part automatiquement. Le cookie de session est posé par le handler /api/auth/*.
+// Inscription via la chaîne ACS : action → contrôleur → service → Better-Auth.
+// La brève vérification (Zod) est faite par l'action, la vérification poussée
+// par le contrôleur, et c'est Better-Auth qui crée le compte, la session et
+// envoie l'email de vérification (sendOnSignUp dans la config).
 
 export default function SignUpForm() {
-  const router = useRouter();
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Soumettre le formulaire — authClient.signUp.email fait tout :
-  // appel /api/auth/sign-up/email, pose du cookie, redirection (callbackURL).
+  // Soumettre le formulaire — l'action redirige vers /installations en cas
+  // de succès.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const name = formData.get("name") as string;
+    const result = await signup(null, formData);
 
-    // Validation Zod côté client (même schéma que l'ancienne server action)
-    const validation = SignUpSchema.safeParse({ email, password, name });
-    if (!validation.success) {
-      const fieldErrors = validation.error.flatten().fieldErrors;
+    if (!result.success) {
       setMessage({
-        text: fieldErrors
-          ? Object.values(fieldErrors)[0][0]
-          : "Données invalides",
+        text: result.error || "Erreur lors de l'inscription",
         type: "error",
       });
       setIsLoading(false);
-      return;
     }
-
-    const { error } = await authClient.signUp.email({
-      name: validation.data.name,
-      email: validation.data.email,
-      password: validation.data.password,
-      callbackURL: "/installations",
-    });
-
-    if (error) {
-      setMessage({
-        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
-        type: "error",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Redirection explicite (le callbackURL de Better-Auth vise la même cible)
-    router.push("/installations");
+    // En cas de succès : la redirection est portée par l'action
   };
 
   return (

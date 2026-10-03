@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useSession } from "@/context/SessionProvider";
-import { authClient } from "@/lib/auth/auth-client";
+import { signout } from "@/lib/actions/AuthActions";
 import { useRouter } from "next/navigation";
 import styles from "./AuthButtons.module.css";
 
 /**
  * AuthButtons - Composant qui affiche des boutons en fonction de l'état de connexion
  * Utilise le hook useSession() pour être réactif aux changements de session.
- * Déconnexion via le client officiel Better-Auth (authClient.signOut) —
- * le cookie de session est supprimé dans la réponse HTTP de /api/auth/sign-out.
+ * Déconnexion via la chaîne ACS (action signout) — Better-Auth supprime la
+ * session et le cookie.
  */
 export default function AuthButtons() {
   const { user } = useSession();
@@ -18,7 +18,7 @@ export default function AuthButtons() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await authClient.signOut();
+    await signout();
     router.push("/");
   };
 

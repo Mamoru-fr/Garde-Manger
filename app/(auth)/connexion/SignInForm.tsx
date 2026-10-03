@@ -1,22 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
-import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
-import { SignInSchema } from "@/lib/validations/auth";
+import { useSearchParams } from "next/navigation";
+import { signin } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 
-// Connexion via le client officiel Better-Auth (doc : authentication/email-password).
-// Le cookie de session est posé par le handler /api/auth/* dans la réponse HTTP —
-// c'est lui qui marchait à côté de l'ancienne server action (les RSC ne peuvent
-// pas poser de cookies). Plus de chaîne AuthActions → AuthController → AuthService.
+// Connexion via la chaîne ACS : action → contrôleur → service → Better-Auth.
+// Le formulaire envoie les champs ; la brève vérification (Zod) est faite
+// par l'action, la vérification poussée par le contrôleur, et c'est
+// Better-Auth qui fait toute la connexion (session + cookies). La
+// redirection vers /installations est portée par l'action en cas de succès.
 
 export default function SignInForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,48 +42,24 @@ export default function SignInForm() {
     }
   }, [searchParams]);
 
-  // Soumettre le formulaire — authClient.signIn.email fait tout :
-  // appel /api/auth/sign-in/email, pose du cookie, redirection (callbackURL).
+  // Soumettre le formulaire — la chaîne ACS fait la vérification et
+  // Better-Auth la connexion ; l'action redirige vers /installations.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const result = await signin(null, formData);
 
-    // Validation Zod côté client (même schéma que l'ancienne server action)
-    const validation = SignInSchema.safeParse({ email, password });
-    if (!validation.success) {
-      const fieldErrors = validation.error.flatten().fieldErrors;
+    if (!result.success) {
       setMessage({
-        text: fieldErrors
-          ? Object.values(fieldErrors)[0][0]
-          : "Données invalides",
+        text: result.error || "Erreur de connexion",
         type: "error",
       });
       setIsLoading(false);
-      return;
     }
-
-    const { error } = await authClient.signIn.email({
-      email: validation.data.email,
-      password: validation.data.password,
-      callbackURL: "/installations",
-    });
-
-    if (error) {
-      setMessage({
-        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
-        type: "error",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Redirection explicite (le callbackURL de Better-Auth vise la même cible)
-    router.push("/installations");
+    // En cas de succès : la redirection est portée par l'action
   };
 
   return (

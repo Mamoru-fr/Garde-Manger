@@ -1,14 +1,15 @@
 // ============================================
 // Handler HTTP officiel de Better-Auth (doc : integrations/next)
 // ============================================
-// Toutes les routes /api/auth/* (sign-in, sign-up, session, verify-email,
-// reset-password, sign-out…) passent par ce catch-all.
+// Toutes les routes /api/auth/* passent par ce catch-all. Indispensable
+// pour les liens cliqués depuis les emails — vérification d'email et
+// reset de mot de passe (GET navigateur) — qui étaient en 404 avant ce
+// handler, et pour tous les endpoints standards Better-Auth.
 //
-// ⚠️ Sans ce handler, aucune de ces routes n'existe côté Next : c'est LUI qui
-// pose le cookie de session dans la réponse HTTP. La connexion via server action
-// (ancienne chaîne AuthActions → AuthController → AuthService) ne posait jamais
-// le cookie — les RSC ne peuvent pas définir de cookies — d'où la boucle
-// /connexion → /installations → /connexion.
+// La connexion des formulaires, elle, passe par la chaîne ACS
+// (actions → contrôleurs → services) : le service appelle auth.api
+// (signInEmail, signUpEmail…) et le plugin nextCookies() pose les
+// cookies dans la server action.
 
 import { auth } from "@/lib/auth/auth";
 import { toNextJsHandler } from "better-auth/next-js";

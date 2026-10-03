@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
-import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
-import { Button, Form } from "@/components/shared";
+import { verifyEmail, resendVerificationEmail } from "@/lib/actions/AuthActions";
+import { Button } from "@/components/shared";
 import { CheckCircle, Clock, AlertTriangle } from "lucide-react";
-import Link from "next/link";
 
-// Vérification d'email via le client officiel Better-Auth.
+// Vérification d'email via la chaîne ACS :
+// action → contrôleur → service → Better-Auth (verifyEmail / sendVerificationEmail).
 // Le lien de l'email pointe vers le handler /api/auth/verify-email, qui
-// vérifie le token automatiquement puis redirige — la page gère les états
-// et propose la vérification manuelle + le renvoi (vrai appel, plus de TODO).
+// vérifie le token automatiquement puis redirige ; la page gère les états,
+// la vérification manuelle et le renvoi (maintenant réellement branché sur
+// l'action, l'ancien TODO affichait un succès factice).
 
 export default function VerificationEmailForm() {
   const searchParams = useSearchParams();
@@ -26,43 +26,42 @@ export default function VerificationEmailForm() {
     if (!token) return;
 
     setIsLoading(true);
-    const { error } = await authClient.verifyEmail({
-      query: { token },
-    });
+    const formData = new FormData();
+    formData.append("token", token);
+    const result = await verifyEmail(null, formData);
 
-    if (error) {
-      setMessage({
-        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
-        type: "error",
-      });
-    } else {
+    if (result.success) {
       setMessage({
         text: "Ton email a été vérifié avec succès ! Tu peux maintenant te connecter.",
         type: "success",
+      });
+    } else {
+      setMessage({
+        text: result.error || "Erreur lors de la vérification",
+        type: "error",
       });
     }
     setIsLoading(false);
   };
 
-  // Renvoyer l'email de vérification (vrai appel Better-Auth)
+  // Renvoyer l'email de vérification — vrai appel via la chaîne ACS
   const handleResend = async () => {
     if (!email) return;
 
     setIsResending(true);
-    const { error } = await authClient.sendVerificationEmail({
-      email,
-      callbackURL: "/connexion",
-    });
+    const formData = new FormData();
+    formData.append("email", email);
+    const result = await resendVerificationEmail(null, formData);
 
-    if (error) {
-      setMessage({
-        text: getAuthErrorMessage({ status: error.status, code: error.code, message: error.message }),
-        type: "error",
-      });
-    } else {
+    if (result.success) {
       setMessage({
         text: "Un nouvel email de vérification a été envoyé.",
         type: "success",
+      });
+    } else {
+      setMessage({
+        text: result.error || "Erreur lors de l'envoi de l'email",
+        type: "error",
       });
     }
     setIsResending(false);

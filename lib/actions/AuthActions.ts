@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { ZodError } from "zod";
 import {
   SignUpSchema,
   SignInSchema,
@@ -10,53 +11,67 @@ import {
 } from "@/lib/validations/auth";
 import { AuthController } from "@/lib/controllers/AuthController";
 import { ActionResponse, ErrorCodes } from "@/lib/types";
-import {getAuthHeaders} from "../utils/auth";
 import { auth } from "@/lib/auth/auth";
-// ================
-// SERVER ACTIONS D'AUTHENTIFICATION
-// ================
+import { getAuthHeaders } from "@/lib/utils/auth";
+
+// ============================================
+// ACTIONS D'AUTHENTIFICATION (couche Action de la chaîne ACS)
+// ============================================
+// Rôle de l'action : recevoir l'appel du formulaire et faire la BRÈVE
+// vérification — validation Zod des entrées. La vérification poussée vit
+// dans le contrôleur (AuthController), l'appel à Better-Auth dans le
+// service (AuthService). C'est Better-Auth qui fait tout le travail de
+// connexion (session, cookies via le plugin nextCookies) — la chaîne
+// sert à le protéger des mauvaises entrées et des sabotages.
+//
+// Corrections apportées à l'ancienne version : suppression des logs de
+// debug emoji, suppression du encodeURIComponent qui déformait les
+// messages d'erreur, forgotPassword ne redirige plus vers une page
+// inexistante (le formulaire affiche le succès), nouveau
+// resendVerificationEmail réellement branché (ancien TODO factice).
+
+/** Premier message d'erreur de validation Zod (champ par champ) */
+function firstValidationError(error: ZodError): string {
+  const fieldErrors = error.flatten().fieldErrors;
+  return fieldErrors && Object.keys(fieldErrors).length > 0
+    ? (Object.values(fieldErrors)[0] as string[])[0]
+    : "Données invalides";
+}
 
 // Action pour l'inscription
 export async function signup(
   prevState: ActionResponse<{ userId: string }> | null,
   formData: FormData
 ): Promise<ActionResponse<{ userId: string }>> {
-  // Validation des entrées avec Zod
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-
+  // Brève vérification : validation Zod des entrées
   const validation = SignUpSchema.safeParse({
-    email,
-    password,
-    name,
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+    name: formData.get("name") as string,
   });
 
   if (!validation.success) {
     return {
       success: false,
-      error: validation.error.flatten().fieldErrors
-        ? Object.values(validation.error.flatten().fieldErrors)[0][0]
-        : "Données invalides",
+      error: firstValidationError(validation.error),
       code: ErrorCodes.VALIDATION_ERROR,
       details: validation.error.format(),
     };
   }
 
-  // Appel au contrôleur
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service)
   const result = await AuthController.signup(validation.data);
-
   if (!result.success) {
     return result;
   }
 
-  // Attendre que la session soit disponible
-  const headers = await getAuthHeaders();
-  const session = await auth.api.getSession({ headers });
+  // Brève vérification finale : la session est bien là
+  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
   if (!session?.user) {
-    return { success: false, error: "Session non créée" };
+    return { success: false, error: "Session non créée", code: ErrorCodes.INTERNAL_ERROR };
   }
-    redirect("/installations");
+
+  redirect("/installations");
 }
 
 // Action pour la connexion
@@ -64,66 +79,43 @@ export async function signin(
   prevState: ActionResponse<{ userId: string }> | null,
   formData: FormData
 ): Promise<ActionResponse<{ userId: string }>> {
-  console.log("🟢 [SERVER ACTION] Début de signin()");
-  
-  // Validation des entrées avec Zod
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  console.log("🟢 [SERVER ACTION] Email:", email);
-
+  // Brève vérification : validation Zod des entrées
   const validation = SignInSchema.safeParse({
-    email,
-    password,
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
   });
 
   if (!validation.success) {
-    console.log("❌ [SERVER ACTION] Validation échouée:", validation.error.format());
     return {
       success: false,
-      error: validation.error.flatten().fieldErrors
-        ? Object.values(validation.error.flatten().fieldErrors)[0][0]
-        : "Données invalides",
+      error: firstValidationError(validation.error),
       code: ErrorCodes.VALIDATION_ERROR,
       details: validation.error.format(),
     };
   }
 
-  console.log("🟢 [SERVER ACTION] Validation OK, appel de AuthController.signin()");
-  // Appel au contrôleur
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service)
   const result = await AuthController.signin(validation.data);
-  console.log("🟢 [SERVER ACTION] Résultat du contrôleur:", result);
-
   if (!result.success) {
-    console.log("❌ [SERVER ACTION] Échec du contrôleur:", result.error);
-    return {
-      ...result,
-      // Rediriger avec l'erreur pour l'afficher dans l'URL
-      error: encodeURIComponent(result.error || "Erreur de connexion"),
-    };
+    return result;
   }
 
-  console.log("✅ [SERVER ACTION] Connexion réussie, redirection vers /installations");
-  // Attendre que la session soit disponible
-  const headers = await getAuthHeaders();
-  const session = await auth.api.getSession({ headers });
+  // Brève vérification finale : la session est bien là
+  const session = await auth.api.getSession({ headers: await getAuthHeaders() });
   if (!session?.user) {
-    return { success: false, error: "Session non créée" };
+    return { success: false, error: "Session non créée", code: ErrorCodes.INTERNAL_ERROR };
   }
-  
-  // Rediriger directement vers /installations après une connexion réussie
+
   redirect("/installations");
 }
 
 // Action pour la déconnexion
 export async function signout(): Promise<ActionResponse<void>> {
-  // Appel au contrôleur
   const result = await AuthController.signout();
-
   if (!result.success) {
     return result;
   }
 
-  // Rediriger vers la page d'accueil
   redirect("/");
 }
 
@@ -132,33 +124,24 @@ export async function forgotPassword(
   prevState: ActionResponse<void> | null,
   formData: FormData
 ): Promise<ActionResponse<void>> {
-  // Validation des entrées avec Zod
-  const email = formData.get("email") as string;
-
+  // Brève vérification : validation Zod des entrées
   const validation = ForgotPasswordSchema.safeParse({
-    email,
+    email: formData.get("email") as string,
   });
 
   if (!validation.success) {
     return {
       success: false,
-      error: validation.error.flatten().fieldErrors
-        ? Object.values(validation.error.flatten().fieldErrors)[0][0]
-        : "Données invalides",
+      error: firstValidationError(validation.error),
       code: ErrorCodes.VALIDATION_ERROR,
       details: validation.error.format(),
     };
   }
 
-  // Appel au contrôleur
-  const result = await AuthController.forgotPassword(validation.data);
-
-  if (!result.success) {
-    return result;
-  }
-
-  // Rediriger vers la page de confirmation
-  redirect(`/forgot-password/confirm?email=${encodeURIComponent(validation.data.email)}`);
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service).
+  // Pas de redirect : le formulaire affiche l'écran de succès (l'ancienne
+  // version redirigeait vers /forgot-password/confirm, une page inexistante).
+  return AuthController.forgotPassword(validation.data);
 }
 
 // Action pour la réinitialisation du mot de passe
@@ -166,36 +149,28 @@ export async function resetPassword(
   prevState: ActionResponse<void> | null,
   formData: FormData
 ): Promise<ActionResponse<void>> {
-  // Validation des entrées avec Zod
-  const token = formData.get("token") as string;
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
-
+  // Brève vérification : validation Zod des entrées
   const validation = ResetPasswordSchema.safeParse({
-    token,
-    password,
-    confirmPassword,
+    token: formData.get("token") as string,
+    password: formData.get("password") as string,
+    confirmPassword: formData.get("confirmPassword") as string,
   });
 
   if (!validation.success) {
     return {
       success: false,
-      error: validation.error.flatten().fieldErrors
-        ? Object.values(validation.error.flatten().fieldErrors)[0][0]
-        : "Données invalides",
+      error: firstValidationError(validation.error),
       code: ErrorCodes.VALIDATION_ERROR,
       details: validation.error.format(),
     };
   }
 
-  // Appel au contrôleur
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service)
   const result = await AuthController.resetPassword(validation.data);
-
   if (!result.success) {
     return result;
   }
 
-  // Rediriger vers la page de connexion
   redirect("/connexion?reset=success");
 }
 
@@ -204,43 +179,48 @@ export async function verifyEmail(
   prevState: ActionResponse<void> | null,
   formData: FormData
 ): Promise<ActionResponse<void>> {
-  // Validation des entrées avec Zod
-  const token = formData.get("token") as string;
-
+  // Brève vérification : validation Zod des entrées
   const validation = VerifyEmailSchema.safeParse({
-    token,
+    token: formData.get("token") as string,
   });
 
   if (!validation.success) {
     return {
       success: false,
-      error: validation.error.flatten().fieldErrors
-        ? Object.values(validation.error.flatten().fieldErrors)[0][0]
-        : "Données invalides",
+      error: firstValidationError(validation.error),
       code: ErrorCodes.VALIDATION_ERROR,
       details: validation.error.format(),
     };
   }
 
-  // Appel au contrôleur
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service)
   const result = await AuthController.verifyEmail(validation.data);
-
   if (!result.success) {
     return result;
   }
 
-  // Rediriger vers la page de connexion
   redirect("/connexion?verified=success");
 }
 
-// Action pour obtenir la session (utilisée dans les pages protégées)
-export async function getSession() {
-  const result = await AuthController.getSession();
-  return result;
-}
+// Action pour renvoyer l'email de vérification
+export async function resendVerificationEmail(
+  prevState: ActionResponse<void> | null,
+  formData: FormData
+): Promise<ActionResponse<void>> {
+  // Brève vérification : validation Zod des entrées
+  const validation = ForgotPasswordSchema.safeParse({
+    email: formData.get("email") as string,
+  });
 
-// Action pour obtenir les infos utilisateur (utilisée dans les composants)
-export async function getSessionUser() {
-  const result = await AuthController.getSession();
-  return result;
+  if (!validation.success) {
+    return {
+      success: false,
+      error: firstValidationError(validation.error),
+      code: ErrorCodes.VALIDATION_ERROR,
+      details: validation.error.format(),
+    };
+  }
+
+  // Vérification poussée (contrôleur) puis appel Better-Auth (service)
+  return AuthController.resendVerificationEmail(validation.data.email);
 }
