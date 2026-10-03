@@ -24,11 +24,13 @@ import { getAuthHeaders } from "@/lib/utils/auth";
 // connexion (session, cookies via le plugin nextCookies) — la chaîne
 // sert à le protéger des mauvaises entrées et des sabotages.
 //
-// Corrections apportées à l'ancienne version : suppression des logs de
-// debug emoji, suppression du encodeURIComponent qui déformait les
-// messages d'erreur, forgotPassword ne redirige plus vers une page
-// inexistante (le formulaire affiche le succès), nouveau
-// resendVerificationEmail réellement branché (ancien TODO factice).
+// Corrections apportées à l'ancienne version : suppression du
+// encodeURIComponent qui déformait les messages d'erreur, forgotPassword
+// ne redirige plus vers une page inexistante (le formulaire affiche le
+// succès), nouveau resendVerificationEmail réellement branché (ancien
+// TODO factice). Les logs de debug restent en place tant que le projet
+// est en phase de dev (décision Alexis 03/10 : on doit voir ce qui se
+// passe côté serveur).
 
 /** Premier message d'erreur de validation Zod (champ par champ) */
 function firstValidationError(error: ZodError): string {
@@ -79,6 +81,9 @@ export async function signin(
   prevState: ActionResponse<{ userId: string }> | null,
   formData: FormData
 ): Promise<ActionResponse<{ userId: string }>> {
+  console.log("🟢 [SERVER ACTION] Début de signin()");
+  console.log("🟢 [SERVER ACTION] Email:", formData.get("email"));
+
   // Brève vérification : validation Zod des entrées
   const validation = SignInSchema.safeParse({
     email: formData.get("email") as string,
@@ -86,6 +91,7 @@ export async function signin(
   });
 
   if (!validation.success) {
+    console.log("❌ [SERVER ACTION] Validation échouée:", validation.error.format());
     return {
       success: false,
       error: firstValidationError(validation.error),
@@ -94,9 +100,12 @@ export async function signin(
     };
   }
 
+  console.log("🟢 [SERVER ACTION] Validation OK, appel de AuthController.signin()");
   // Vérification poussée (contrôleur) puis appel Better-Auth (service)
   const result = await AuthController.signin(validation.data);
+  console.log("🟢 [SERVER ACTION] Résultat du contrôleur:", result);
   if (!result.success) {
+    console.log("❌ [SERVER ACTION] Échec du contrôleur:", result.error);
     return result;
   }
 
@@ -106,6 +115,7 @@ export async function signin(
     return { success: false, error: "Session non créée", code: ErrorCodes.INTERNAL_ERROR };
   }
 
+  console.log("✅ [SERVER ACTION] Connexion réussie, redirection vers /installations");
   redirect("/installations");
 }
 

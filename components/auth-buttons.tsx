@@ -48,7 +48,7 @@ export default function AuthButtons() {
 
           {/* Bouton Inscription (visible si déconnecté) */}
           <Link href="/inscription" className={styles.authButtonSecondary}>
-            S&apos;inscrire
+            S'inscrire
           </Link>
         </>
       )}

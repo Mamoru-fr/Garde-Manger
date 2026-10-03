@@ -18,8 +18,9 @@ import { getAuthErrorMessage } from "@/lib/utils/auth-errors";
 // le plugin nextCookies, vérification email, reset). Le service traduit
 // juste les erreurs de la lib en messages FR (lib/utils/auth-errors.ts).
 //
-// Corrections apportées à l'ancienne version : suppression des logs de
-// debug emoji ; suppression de la re-vérification de session après
+// Corrections apportées à l'ancienne version : conservation des logs de
+// debug (phase de dev, décision Alexis 03/10 : on doit voir ce qui se
+// passe côté serveur) ; suppression de la re-vérification de session après
 // signInEmail (Better-Auth la renvoie déjà — la brève vérification vit
 // dans l'action) ; suppression du SELECT d'existence d'utilisateur avant
 // l'inscription (Better-Auth le fait et renvoie une erreur qu'on traduit) ;
@@ -74,7 +75,10 @@ export async function signupService(input: SignUpInput): Promise<ActionResponse<
 
 // Connexion d'un utilisateur
 export async function signinService(input: SignInInput): Promise<ActionResponse<{ userId: string }>> {
+  console.log("🟠 [SERVICE] Début de signinService()");
+  console.log("🟠 [SERVICE] Input:", { email: input.email, password: "***" });
   try {
+    console.log("🟠 [SERVICE] Appel de auth.api.signInEmail()");
     const response = await auth.api.signInEmail({
       body: {
         email: input.email,
@@ -83,9 +87,15 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
       headers: await getAuthHeaders(),
       asResponse: true,
     });
+    console.log("🟠 [SERVICE] Réponse de signInEmail:", {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+    });
 
     if (!response.ok) {
       const errorData = (await response.json().catch(() => null)) as BetterAuthError | null;
+      console.log("❌ [SERVICE] Erreur de Better-Auth:", errorData);
       return {
         success: false,
         error: getAuthErrorMessage({
@@ -100,6 +110,9 @@ export async function signinService(input: SignInInput): Promise<ActionResponse<
     // signInEmail renvoie { user, session } : la session est déjà créée
     // et le cookie déjà posé par Better-Auth (plugin nextCookies)
     const data = (await response.json()) as { user: { id: string } };
+    console.log("🟠 [SERVICE] Connexion réussie, session créée par Better-Auth:", {
+      userId: data.user.id,
+    });
     return { success: true, data: { userId: data.user.id } };
   } catch (error) {
     console.error("[AuthService] Erreur lors de la connexion:", error);

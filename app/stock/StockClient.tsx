@@ -220,7 +220,7 @@ export default function StockClient({
         {installationId ? (
           <Link href={`/installations/${installationId}`} className={styles.backLink}>
             <ArrowLeft size={20} />
-            Retour à l&apos;installation
+            Retour à l'installation
           </Link>
         ) : (
           <Link href="/installations" className={styles.backLink}>

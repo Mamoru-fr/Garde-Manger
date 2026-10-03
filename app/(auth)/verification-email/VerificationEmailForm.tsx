@@ -97,7 +97,7 @@ export default function VerificationEmailForm() {
               </p>
               <div className="flex gap-sm">
                 <Button variant="outline" onClick={handleResend} isLoading={isResending}>
-                  Renvoyer l&apos;email
+                  Renvoyer l'email
                 </Button>
                 <Button variant="primary" onClick={() => window.location.href = "/connexion"}>
                   Retour à la connexion

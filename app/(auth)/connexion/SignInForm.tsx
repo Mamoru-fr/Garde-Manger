@@ -49,15 +49,25 @@ export default function SignInForm() {
     setMessage(null);
     setIsLoading(true);
 
+    console.log("🔵 [CLIENT] Début de la soumission du formulaire de connexion");
     const formData = new FormData(e.currentTarget);
+    console.log("🔵 [CLIENT] FormData:", {
+      email: formData.get("email"),
+      password: formData.get("password") ? "***" : "empty",
+    });
+    console.log("🔵 [CLIENT] Appel de signin()");
     const result = await signin(null, formData);
+    console.log("🔵 [CLIENT] Résultat de signin():", result);
 
     if (!result.success) {
+      console.log("❌ [CLIENT] Erreur de connexion:", result.error);
       setMessage({
         text: result.error || "Erreur de connexion",
         type: "error",
       });
       setIsLoading(false);
+    } else {
+      console.log("✅ [CLIENT] Connexion réussie, en attente de redirection...");
     }
     // En cas de succès : la redirection est portée par l'action
   };
@@ -130,7 +140,7 @@ export default function SignInForm() {
       </div>
 
       <p className="text-center text-muted">
-        Tu n&apos;as pas de compte ?{" "}
+        Tu n'as pas de compte ?{" "}
         <Link href="/inscription" className="text-primary hover:underline">
           Crée-en un
         </Link>

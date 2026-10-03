@@ -103,18 +103,25 @@ export class AuthController {
 
   // Contrôleur pour la connexion
   static async signin(data: SignInInput): Promise<ActionResponse<{ userId: string }>> {
+    console.log("🟡 [CONTROLLER] Début de AuthController.signin()");
+    console.log("🟡 [CONTROLLER] Data:", { email: data.email, password: "***" });
+
     const emailCheck = checkEmail(data.email);
     if ("success" in emailCheck && emailCheck.success === false) {
+      console.log("❌ [CONTROLLER] Email invalide");
       return emailCheck;
     }
 
     const passwordCheck = checkPassword(data.password);
     if (passwordCheck) {
+      console.log("❌ [CONTROLLER] Mot de passe invalide");
       return passwordCheck;
     }
 
-    // Appel au service (Better-Auth fait la connexion : session + cookies)
-    return signinService({ email: emailCheck.email, password: data.password });
+    console.log("🟡 [CONTROLLER] Validation OK, appel de signinService()");
+    const result = await signinService({ email: emailCheck.email, password: data.password });
+    console.log("🟡 [CONTROLLER] Résultat de signinService():", result);
+    return result;
   }
 
   // Contrôleur pour la déconnexion
