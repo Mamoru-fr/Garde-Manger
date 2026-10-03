@@ -8,11 +8,10 @@ import {
   primaryKey,
   index,
   jsonb,
-  foreignKey,
   doublePrecision,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations, Many, One } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 
 // ============================================================================
 // ENUMS
@@ -444,7 +443,7 @@ export const objectHistory = pgTable("object_history", {
 // ============================================================================
 
 // Utilisateurs (avec alias pour rétrocompatibilité)
-export const userRelations = relations(user, ({ many, one }) => ({
+export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   installations: many(installations),
