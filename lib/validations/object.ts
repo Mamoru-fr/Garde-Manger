@@ -124,6 +124,21 @@ export const SearchObjectsSchema = z.object({
   limit: z.number().int().positive().max(100).default(20),
 });
 
+// Schéma pour la recherche manuelle de produits par nom (annuaire + OpenFoodFacts)
+export const SearchProductsByNameSchema = z.object({
+  query: z
+    .string()
+    .trim()
+    .min(2, "La recherche doit contenir au moins 2 caractères")
+    .max(100, "La recherche ne peut pas dépasser 100 caractères"),
+  limit: z
+    .number()
+    .int("La limite doit être un nombre entier")
+    .min(1, "La limite minimale est 1")
+    .max(20, "La limite maximale est 20")
+    .default(10),
+});
+
 // ================
 // TYPES
 // ================
@@ -146,3 +161,4 @@ export type RemoveObjectFromInstallationInput = z.infer<
 
 // Types pour les recherches
 export type SearchObjectsInput = z.infer<typeof SearchObjectsSchema>;
+export type SearchProductsByNameInput = z.infer<typeof SearchProductsByNameSchema>;

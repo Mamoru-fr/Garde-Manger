@@ -177,6 +177,127 @@
   border: 1px solid #a7f3d0;
 }
 
+/* Bascule de mode de recherche : code-barres / nom */
+.modeToggle {
+  display: flex;
+  gap: 0.25rem;
+  background-color: #e8dfd0;
+  border-radius: 8px;
+  padding: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.modeButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #6b5b47;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.modeButton:hover {
+  color: #2e1a10;
+}
+
+.modeButtonActive {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #8b4513;
+  color: #fdf6e8;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Liste des résultats de la recherche par nom */
+.resultsList {
+  margin-top: 0.5rem;
+  border: 1px solid #e8dfd0;
+  border-radius: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: white;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background-color: white;
+  border: none;
+  border-bottom: 1px solid #e8dfd0;
+  color: #2e1a10;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.resultItem:last-child {
+  border-bottom: none;
+}
+
+.resultItem:hover {
+  background-color: #fdf6e8;
+}
+
+.resultName {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.resultBrand {
+  font-size: 0.75rem;
+  color: #6b5b47;
+}
+
+.resultBadgeOff,
+.resultBadgeLocal {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.resultBadgeOff {
+  background-color: #e8dfd0;
+  color: #6b5b47;
+}
+
+.resultBadgeLocal {
+  background-color: #8b4513;
+  color: #fdf6e8;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .pageContainer {

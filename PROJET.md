@@ -15,7 +15,8 @@
 
 | Tâche | Statut | Priorité | Notes |
 |---|---|---|---|
-| Init tour-de-main (AGENTS.md, PROJET.md, code-map, skill) | en cours | haute | branche `init-tour-de-main` → `developement` |
+| Init tour-de-main (AGENTS.md, PROJET.md, code-map, skill) | fait | haute | PR #11 mergée le 03/10 + correctifs review |
+| Recherche manuelle d'un produit par nom (annuaire + OpenFoodFacts) | en review | haute | branche `feat-recherche-manuelle-nom` → `developement` ; GO du 03/10 sans attendre la fondation générique — adaptation post-migration à prévoir (une ligne dans la présentation du code) |
 | Spec à deux : modèle générique/poids | à faire | haute | avant tout code — c'est la fondation |
 | Implémentation générique/poids (directory générique → variantes, migration) | à faire | haute | ordre 1 du planning d'octobre |
 | Cave à vins — option B (table `wine_details` portée par l'instance) | à faire | normale | ordre 2 |
@@ -35,6 +36,9 @@
 | 03/10/2026 | Go sur le planning d'octobre, après relecture à deux | session du 03/10 |
 | 03/10/2026 | Init posée sur branche dédiée `init-tour-de-main` → `developement` | convention du repo : pas de commit direct sur une branche de long cours |
 | 03/10/2026 | Question hooks tranchée : aucun outil de hooks détecté (husky, lefthook, lint-staged, simple-git-hooks : zéro match), et les commits via l'API GitHub ne déclenchent jamais les hooks client → la gate doit être server-side (CI). *Reformulé après review : « aucun husky » ne prouvait pas « pas de hooks » — un mot n'est pas une preuve* | première mesure du chantier pilote |
+| 03/10/2026 | Recherche manuelle par nom : annuaire local d'abord (ILIKE sur `name` + `brand`), repli OpenFoodFacts si 0 résultat local ; sélection d'un résultat OFF = résolution/création de la fiche locale via le flux code-barres existant | construit sur la plomberie existante, zéro migration |
+| 03/10/2026 | Correction du branchement `objectDirectoryId` : la page d'ajout envoyait le code-barres brut comme ID de fiche, alors que le service cherche `eq(objectDirectory.id, …)` — la fiche résolue par la recherche est maintenant envoyée | le flux d'ajout manuel renvoie un vrai ID d'annuaire |
+| 03/10/2026 | Repo passé en public sous licence **All Rights Reserved** (`LICENSE.txt`) : lecture et fork autorisés (CGU GitHub), toute copie/modification/redistribution interdite sans accord écrit | accès permanent d'Ada au code, plus d'upload manuel ; pas d'ouverture open-source |
 
 ## 4. Fichiers et documents associés
 
@@ -48,7 +52,7 @@
 
 ## 5. État d'avancement
 
-Chantier pilote de tour-de-main. Init posée le 03/10 sur branche dédiée ; prochaine étape : **la spec à deux sur le modèle générique/poids, avant toute ligne de code**. Risque principal : la migration du directory (générique → variantes) — d'où plan obligatoire et test défaillant d'abord.
+Chantier pilote de tour-de-main. Recherche manuelle par nom posée le 03/10 sur branche dédiée (en review Alexis). Prochaine étape : **la spec à deux sur le modèle générique/poids, avant toute ligne de code**. Risque principal : la migration du directory (générique → variantes) — d'où plan obligatoire et test défaillant d'abord.
 
 ## 6. Audit de la solution (changelog daté)
 
@@ -56,5 +60,6 @@ Chantier pilote de tour-de-main. Init posée le 03/10 sur branche dédiée ; pro
 |---|---|---|---|
 | 03/10/2026 | Init du chantier : AGENTS.md, PROJET.md, code-map.md, skill tour-de-main v1.1 ; deux détections ajoutées à la liste noire (`next.config.js` dupliqué, `tsconfig.tsbuildinfo` commité) | Ada | en attente |
 | 03/10/2026 | Corrections de texte après review Alexis : « inventorier » (faute propagée depuis la fiche d'origine, copiée sans relecture), formulation des hooks (« aucun husky » ne prouvait pas « pas de hooks » → « aucun outil de hooks détecté », revérifié : zéro match), « à gitigner » → « à ajouter au .gitignore » | Ada | en attente |
+| 03/10/2026 | Recherche manuelle par nom : `SearchProductsByNameSchema` (Zod), `DirectoryService.searchByNameLocal` (ILIKE nom + marque), action `searchProductsByName` (session + Zod + locale d'abord + repli OFF), bascule « Par code-barres » / « Par nom » dans `AddObjectClient` avec liste de résultats cliquable et résolution de fiche (corrige le branchement `objectDirectoryId`), styles toggle/résultats (palette café), test TDD `test/searchProductsByName.test.ts` + `vitest.config.ts` (alias `@/`, exclusion du test cassé historique). ⚠️ Gates lint/typecheck/vitest non exécutés dans l'environnement Ada (installation de paquets interdite) — à faire tourner avant merge | Ada | en attente |
 
 **Règle de merge** : aucun merge de code cœur sans review d'Alexis — la review est son moment de compréhension et de contrôle.
