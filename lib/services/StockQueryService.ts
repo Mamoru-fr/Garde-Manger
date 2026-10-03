@@ -35,13 +35,17 @@ import {
   getExpiryStatus,
 } from "./StockViewService";
 import type {
-  DisplayPreferences,
   ExpiryStatus,
   GenericStockCard,
-  QuantityUnit,
   StockRowInput,
-  UnitFamily,
 } from "./StockViewService";
+// Les types de la spec vivent dans QuantityService, la source de vérité
+// (StockViewService les importe sans les ré-exporter).
+import type {
+  DisplayPreferences,
+  QuantityUnit,
+  UnitFamily,
+} from "./QuantityService";
 
 // --------------------------------------------
 // Types publics de la vue générique
@@ -314,7 +318,12 @@ export async function getGenericStockView(
   // 5. Mapping vers les entrées du builder + comptages par ligne (Q3).
   let expiringSoonCount = 0;
   let expiredCount = 0;
-  const stockRows: StockRowInput[] = rows.map((row) => {
+  const stockRows: StockRowInput[] = rows.flatMap((row) => {
+    // Ligne orpheline sans fiche générique — FK notNull en base, donc
+    // défensif seulement : on ignore plutôt que de mentir sur la fiche.
+    if (!row.directoryId || !row.directoryName) {
+      return [];
+    }
     const days = calculateDaysUntilExpiry(row.expiryDate);
     const status: ExpiryStatus = getExpiryStatus(days);
     if (status === "warning" || status === "urgent") {
@@ -325,10 +334,15 @@ export async function getGenericStockView(
     }
 
     const role = roles.get(row.installationId) ?? "viewer";
-    return {
-      ...row,
-      hasEditPermission: role === "owner" || role === "editor",
-    };
+    return [
+      {
+        ...row,
+        directoryId: row.directoryId,
+        directoryName: row.directoryName,
+        installationName: row.installationName ?? "Installation inconnue",
+        hasEditPermission: role === "owner" || role === "editor",
+      },
+    ];
   });
 
   // 6. Construction des cartes génériques (partie pure, testée).
@@ -337,12 +351,14 @@ export async function getGenericStockView(
   // 7. Tri + filtre Q4 : au tri par quantité dans une famille sélectionnée,
   //    les cartes des autres familles sont masquées (décision Alexis).
   const quantityFamily = filters.quantityFamily ?? null;
-  const visibleCards =
-    filters.sortBy === "quantity" && quantityFamily
-      ? cards.filter(
-          (card) => card.aggregation.totals[quantityFamily] != null
-        )
-      : cards;
+  let visibleCards = cards;
+  if (filters.sortBy === "quantity" && quantityFamily) {
+    // Famille figée non-nullable : le filtre et le tri parlent de la même.
+    const family: UnitFamily = quantityFamily;
+    visibleCards = cards.filter(
+      (card) => card.aggregation.totals[family] != null
+    );
+  }
 
   const direction = filters.sortOrder === "desc" ? -1 : 1;
   const sortedCards = [...visibleCards].sort((a, b) => {
@@ -355,8 +371,9 @@ export async function getGenericStockView(
         if (!quantityFamily) {
           return 0;
         }
-        const av = a.aggregation.totals[quantityFamily] ?? null;
-        const bv = b.aggregation.totals[quantityFamily] ?? null;
+        const family: UnitFamily = quantityFamily;
+        const av = a.aggregation.totals[family] ?? null;
+        const bv = b.aggregation.totals[family] ?? null;
         if (av === null && bv === null) return 0;
         if (av === null) return 1;
         if (bv === null) return -1;
