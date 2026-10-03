@@ -14,43 +14,28 @@ if (typeof window !== "undefined") {
   );
 }
 
-// Stocker la session en cache pour éviter les requêtes SQL en double
-let cachedSession: Promise<any> | null = null;
-
 /**
  * Obtenir la session utilisateur actuelle pour les Server Components
- * Utilise un cache pour éviter les requêtes SQL en double dans une même requête HTTP
+ * Utilise le cache de React (portée : UNE requête HTTP) pour éviter les
+ * requêtes SQL en double dans une même requête.
+ *
+ * ⚠️ Ne JAMAIS remplacer par une variable au niveau du module : elle vivrait
+ * pour toute la durée du process serveur et empoisonnerait toutes les
+ * requêtes suivantes (premier appel anonyme = session null en cache pour
+ * tout le monde, jusqu'au redémarrage du serveur).
  */
-export async function getCurrentSession() {
-  // Créer la promesse une seule fois
-  if (!cachedSession) {
-    cachedSession = (async () => {
-      try {
-        // On utilise les headers de la requête pour que nextCookies() puisse accéder aux cookies
-        const h = await headers();
-        return await auth.api.getSession({ headers: h });
-      } catch (error) {
-        console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
-        return null;
-      }
-    })();
-  }
-  
-  // Attendre le résultat
+export const getCurrentSession = cache(async () => {
   try {
-    return await cachedSession;
+    // On utilise les headers de la requête pour que nextCookies() puisse accéder aux cookies
+    const h = await headers();
+    return await auth.api.getSession({ headers: h });
   } catch (error) {
     console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
     return null;
   }
-}
+});
 
 // Fonction pour obtenir les headers de la requête actuelle
 export async function getAuthHeaders() {
   return await headers();
-}
-
-// Réinitialiser le cache (utile pour les tests ou lorsque la session change)
-export function resetSessionCache(): void {
-  cachedSession = null;
 }
