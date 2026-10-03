@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Warehouse, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { StockItemWithExpiryStatus } from "@/lib/types/stockTypes";
@@ -30,8 +30,8 @@ export default function StockClient({
   installationName,
   forceCardView = false,
 }: StockClientProps) {
-  const [items, setItems] = useState<StockItemWithExpiryStatus[]>([]);
-  const [stats, setStats] = useState<StockStats | null>(null);
+  const [items, setItems] = useState<StockItemWithExpiryStatus[]>(initialData?.items || []);
+  const [stats, setStats] = useState<StockStats | null>(initialData?.stats || null);
   const [filters, setFilters] = useState<StockFilters>({
     sortBy: "expiry_date",
     sortOrder: "asc",
@@ -39,19 +39,21 @@ export default function StockClient({
   });
   const [isLoading, setIsLoading] = useState(!initialData);
   const [selectedItem, setSelectedItem] = useState<StockItemWithExpiryStatus | null>(null);
-  const [installations, setInstallations] = useState<{ id: string; name: string }[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [installations, setInstallations] = useState<{ id: string; name: string }[]>(initialData?.installations || []);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(initialData?.categories || []);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialiser avec les données du serveur
-  useEffect(() => {
-    if (initialData) {
-      setItems(initialData.items || []);
-      setStats(initialData.stats || null);
-      setInstallations(initialData.installations || []);
-      setCategories(initialData.categories || []);
-    }
-  }, [initialData]);
+  // Synchroniser l'état quand initialData change (pattern officiel React
+  // « ajuster l'état pendant le rendu » — remplace l'effet qui posait
+  // setState-in-effect au React Compiler, et supprime le flash du 1er rendu)
+  const [prevInitialData, setPrevInitialData] = useState(initialData);
+  if (initialData !== prevInitialData) {
+    setPrevInitialData(initialData);
+    setItems(initialData?.items || []);
+    setStats(initialData?.stats || null);
+    setInstallations(initialData?.installations || []);
+    setCategories(initialData?.categories || []);
+  }
 
   // Charger les données depuis le client
   const loadStock = useCallback(async () => {
