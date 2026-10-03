@@ -53,7 +53,7 @@
 
 - **Commits** : conventional commits FR (`feat(stock):`, `refactor(styles):`, `chore(api):`…), messages détaillés — la trace doit dire qui on était
 - **Branches** : travail sur branches dédiées → PR vers `developement` (sic, orthographe historique du repo) → `developement` fusionne dans `main` via PR. Jamais de push direct sur `main`.
-- **Gates** : lint + typecheck + tests avant tout commit. ⚠️ Pas de hooks locaux dans le repo (aucun husky) et les commits via l'API GitHub ne déclenchent jamais les hooks client → la gate réelle doit être server-side (CI GitHub Actions, à poser).
+- **Gates** : lint + typecheck + tests avant tout commit. ⚠️ Aucun outil de hooks détecté dans le repo (husky, lefthook, lint-staged, simple-git-hooks : zéro match) ; et de toute façon les commits via l'API GitHub ne déclenchent jamais les hooks client → la gate réelle doit être server-side (CI GitHub Actions, à poser).
 - **Nommage** : code en anglais, commits et commentaires en français
 
 ## 6. Liste noire (ne jamais copier, ne jamais toucher sans décision explicite)
@@ -61,7 +61,7 @@
 - `content/database_types/` — types résiduels d'un autre projet (ride, invoice, shift…)
 - `test/translations.test.ts` — test cassé (référence des locales inexistants)
 - `next.config.js` — coexiste avec `next.config.ts` (Next 16 lit le `.ts`) ; probablement mort, à trancher explicitement
-- `tsconfig.tsbuildinfo` — artefact de build commité, à gitigner et retirer
+- `tsconfig.tsbuildinfo` — artefact de build commité, à ajouter au `.gitignore` puis à retirer du suivi
 - `README.md` — template générique create-next-app ; la vraie doc vit dans `.vibe/plans/`
 
 ## 7. Vraie doc
