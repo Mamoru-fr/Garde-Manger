@@ -371,6 +371,60 @@ export function buildInstallationBreakdown(
 }
 
 // --------------------------------------------
+// buildInstallationDetailRows — les sachets d'une installation
+// (niveau 3 de la pyramide — décision Alexis 04/10)
+//
+// Pur, comme tout ce fichier : la carte arrive déjà construite par
+// buildGenericCards dans un périmètre réduit à CETTE installation,
+// ses lignes sont donc exactement les sachets à lister. On relit
+// chaque ligne et on calcule par ligne ce que l'affichage réclame :
+// le statut du badge de péremption. On ne re-trie PAS — l'ordre de
+// la vue (péremption croissante, sans-date en fin, puis ancienneté)
+// fait foi. Le label de conditionnement est RECOPIÉ, jamais
+// recalculé : la vue l'a déjà formaté avec les mêmes unités (§4).
+// --------------------------------------------
+
+// Une ligne du détail : un sachet de l'installation, prêt à afficher.
+export interface InstallationDetailRow {
+  // = objectInstallationId : l'identité de la ligne pour éditer/supprimer.
+  id: string;
+  // Le conditionnement formaté par la vue : « 2 sachets (de 250 g) ».
+  quantityLabel: string;
+  location: string | null;
+  purchaseDate: Date | null;
+  expiryDate: Date | null;
+  price: number | null; // centimes
+  note: string | null;
+  addedDate: Date | null;
+  // Pour l'ExpiryBadge — calculé ici, la page reste muette.
+  daysUntilExpiry: number | null;
+  expiryStatus: ExpiryStatus;
+  // PAR LIGNE : le rôle de l'utilisateur dans l'installation porteuse.
+  hasEditPermission: boolean;
+}
+
+export function buildInstallationDetailRows(
+  card: GenericStockCard
+): InstallationDetailRow[] {
+  return card.lines.map((line) => {
+    const daysUntilExpiry = calculateDaysUntilExpiry(line.expiryDate);
+    return {
+      id: line.id,
+      quantityLabel: line.quantityLabel,
+      location: line.location,
+      purchaseDate: line.purchaseDate,
+      expiryDate: line.expiryDate,
+      price: line.price,
+      note: line.note,
+      addedDate: line.addedDate,
+      daysUntilExpiry,
+      expiryStatus: getExpiryStatus(daysUntilExpiry),
+      hasEditPermission: line.hasEditPermission,
+    };
+  });
+}
+
+// --------------------------------------------
 // Helpers de péremption — calculs de vue, purs.
 // (Déplacés depuis StockActions le 03/10 : les calculs de vue de stock
 // vivent dans le service, les actions délèguent — règle des couches.)

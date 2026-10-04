@@ -20,10 +20,13 @@ import {
 } from "../lib/services/QuantityService";
 import {
   StockRowInput,
+  StockLine,
+  GenericStockCard,
   buildGenericCards,
   uniqueInstallationsFromCards,
   uniqueCategoriesFromCards,
   buildInstallationBreakdown,
+  buildInstallationDetailRows,
 } from "../lib/services/StockViewService";
 
 // ---- Les unités du seed, en mémoire (§3.1 de la spec) ----
@@ -414,5 +417,139 @@ describe("buildInstallationBreakdown — la quantité par installation (niveau 2
     expect(
       buildInstallationBreakdown({ ...card, lines: [] }, units, noPrefs, legacyUnit)
     ).toEqual([]);
+  });
+});
+
+// ============================================
+// Niveau 3 de la pyramide — les sachets d'une installation
+// (`/installations/[id]/stock/[directoryId]` — décision Alexis 04/10)
+// Écrit AVANT l'implémentation (TDD-first — règle 5).
+// ============================================
+
+describe("buildInstallationDetailRows — les sachets d'une installation (niveau 3)", () => {
+  // calculateDaysUntilExpiry lit le présent : les dates du test sont
+  // relatives à aujourd'hui, jamais absolues.
+  const daysFromNow = (days: number) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + days);
+    return d;
+  };
+
+  // Le builder ne lit que card.lines — une carte minimale honnête suffit.
+  const cardWith = (lines: StockLine[]): GenericStockCard =>
+    ({ lines } as unknown as GenericStockCard);
+
+  // Une ligne d'instance déjà enrichie par la vue (StockLine).
+  const makeLine = (over: Partial<StockLine> = {}): StockLine => ({
+    id: "line-1",
+    installationId: "inst-1",
+    installationName: "Cuisine",
+    quantity: 1,
+    quantityValue: null,
+    quantityUnitId: null,
+    equivalentValue: null,
+    equivalentUnitId: null,
+    location: null,
+    purchaseDate: null,
+    expiryDate: null,
+    price: null,
+    note: null,
+    shopId: null,
+    addedDate: null,
+    hasEditPermission: true,
+    quantityLabel: "1 unité",
+    ...over,
+  });
+
+  it("une ligne par sachet, champs relus tels quels (id, label, emplacement, prix, note, dates)", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([
+        makeLine({
+          id: "l1",
+          quantityLabel: "2 sachets (de 250 g)",
+          location: "Placard haut",
+          purchaseDate: new Date("2026-09-20T00:00:00Z"),
+          price: 349,
+          note: "Prix promo",
+          addedDate: new Date("2026-09-20T00:00:00Z"),
+        }),
+      ])
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "l1",
+      quantityLabel: "2 sachets (de 250 g)",
+      location: "Placard haut",
+      purchaseDate: new Date("2026-09-20T00:00:00Z"),
+      price: 349,
+      note: "Prix promo",
+      addedDate: new Date("2026-09-20T00:00:00Z"),
+    });
+  });
+
+  it("l'ordre de la carte est relu, jamais retrié — le tri appartient à la vue", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([
+        makeLine({ id: "l3", quantityLabel: "3" }),
+        makeLine({ id: "l1", quantityLabel: "1" }),
+        makeLine({ id: "l2", quantityLabel: "2" }),
+      ])
+    );
+    expect(rows.map((r) => r.id)).toEqual(["l3", "l1", "l2"]);
+  });
+
+  it("sans date de péremption : daysUntilExpiry null, statut no_date", () => {
+    const rows = buildInstallationDetailRows(cardWith([makeLine({ expiryDate: null })]));
+    expect(rows[0].daysUntilExpiry).toBeNull();
+    expect(rows[0].expiryStatus).toBe("no_date");
+  });
+
+  it("les statuts du badge par seuil : J-1 expiré, J+2 urgent, J+5 warning, J+30 normal", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([
+        makeLine({ id: "e", expiryDate: daysFromNow(-1) }),
+        makeLine({ id: "u", expiryDate: daysFromNow(2) }),
+        makeLine({ id: "w", expiryDate: daysFromNow(5) }),
+        makeLine({ id: "n", expiryDate: daysFromNow(30) }),
+      ])
+    );
+    expect(rows.find((r) => r.id === "e")?.expiryStatus).toBe("expired");
+    expect(rows.find((r) => r.id === "u")?.expiryStatus).toBe("urgent");
+    expect(rows.find((r) => r.id === "w")?.expiryStatus).toBe("warning");
+    expect(rows.find((r) => r.id === "n")?.expiryStatus).toBe("normal");
+  });
+
+  it("daysUntilExpiry cohérent avec la date (J+3 → 3)", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([makeLine({ expiryDate: daysFromNow(3) })])
+    );
+    expect(rows[0].daysUntilExpiry).toBe(3);
+  });
+
+  it("la permission se lit PAR LIGNE — le rôle de l'installation porte la ligne", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([
+        makeLine({ id: "ok", hasEditPermission: true }),
+        makeLine({ id: "ko", hasEditPermission: false }),
+      ])
+    );
+    expect(rows.find((r) => r.id === "ok")?.hasEditPermission).toBe(true);
+    expect(rows.find((r) => r.id === "ko")?.hasEditPermission).toBe(false);
+  });
+
+  it("une carte sans ligne donne un tableau vide (défensif)", () => {
+    expect(buildInstallationDetailRows(cardWith([]))).toEqual([]);
+  });
+
+  it("le label est RECOPIÉ, jamais recalculé : legacy et moderne passent tels quels", () => {
+    const rows = buildInstallationDetailRows(
+      cardWith([
+        makeLine({ id: "leg", quantityLabel: "2 unités" }),
+        makeLine({ id: "mod", quantityLabel: "500 g" }),
+      ])
+    );
+    expect(rows.find((r) => r.id === "leg")?.quantityLabel).toBe("2 unités");
+    expect(rows.find((r) => r.id === "mod")?.quantityLabel).toBe("500 g");
   });
 });
