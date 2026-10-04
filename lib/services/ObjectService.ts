@@ -1705,7 +1705,11 @@ export async function checkBarcodeInInstallationService(
   try {
     const item = await findObjectInstallationByBarcodeService(installationId, barcode);
     if (!item.success) {
-      return item as ActionResponse<{ found: boolean; quantity: number; objectId?: string }>;
+      return {
+        success: false,
+        error: item.error,
+        code: item.code,
+      };
     }
 
     if (item.data!.item) {

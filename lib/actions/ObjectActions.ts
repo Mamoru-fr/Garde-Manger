@@ -1269,7 +1269,11 @@ export async function updateObjectQuantityInInstallation(
       barcode
     );
     if (!findResult.success) {
-      return findResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
+      return {
+        success: false,
+        error: findResult.error,
+        code: findResult.code,
+      };
     }
 
     const obj = findResult.data!.item;
@@ -1291,7 +1295,11 @@ export async function updateObjectQuantityInInstallation(
       session.user.id
     );
     if (!setResult.success) {
-      return setResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
+      return {
+        success: false,
+        error: setResult.error,
+        code: setResult.code,
+      };
     }
 
     return {
@@ -1351,7 +1359,11 @@ export async function adjustObjectQuantity(
       barcode
     );
     if (!findResult.success) {
-      return findResult as ActionResponse<{ objectId: string; newQuantity: number }>;
+      return {
+        success: false,
+        error: findResult.error,
+        code: findResult.code,
+      };
     }
 
     const obj = findResult.data!.item;
@@ -1372,7 +1384,11 @@ export async function adjustObjectQuantity(
       session.user.id
     );
     if (!setResult.success) {
-      return setResult as ActionResponse<{ objectId: string; newQuantity: number }>;
+      return {
+        success: false,
+        error: setResult.error,
+        code: setResult.code,
+      };
     }
 
     return {
@@ -1417,7 +1433,11 @@ export async function adjustObjectQuantityByInstallationId(
       objectInstallationId
     );
     if (!findResult.success) {
-      return findResult as ActionResponse<{ newQuantity: number }>;
+      return {
+        success: false,
+        error: findResult.error,
+        code: findResult.code,
+      };
     }
 
     const obj = findResult.data!.item;
@@ -1452,7 +1472,11 @@ export async function adjustObjectQuantityByInstallationId(
       session.user.id
     );
     if (!setResult.success) {
-      return setResult as ActionResponse<{ newQuantity: number }>;
+      return {
+        success: false,
+        error: setResult.error,
+        code: setResult.code,
+      };
     }
 
     return {

@@ -243,12 +243,20 @@ export async function updateStockItem(
 
     // Round de fermeture : accès, permissions et requête vivent dans
     // ObjectService, derrière ObjectController — zéro DB côté action
-    return await ObjectController.updateStockItem(
+    const result = await ObjectController.updateStockItem(
       installationId,
       objectInstallationId,
       session.user.id,
       input
     );
+    if (result.success) {
+      return { success: true };
+    }
+    return {
+      success: false,
+      error: result.error,
+      code: result.code,
+    };
   } catch (error) {
     console.error("[StockActions] Erreur dans updateStockItem:", error);
     return {
@@ -280,11 +288,19 @@ export async function deleteStockItem(
 
     // Round de fermeture : accès, permissions et requête vivent dans
     // ObjectService, derrière ObjectController — zéro DB côté action
-    return await ObjectController.deleteStockItem(
+    const result = await ObjectController.deleteStockItem(
       installationId,
       objectInstallationId,
       session.user.id
     );
+    if (result.success) {
+      return { success: true };
+    }
+    return {
+      success: false,
+      error: result.error,
+      code: result.code,
+    };
   } catch (error) {
     console.error("[StockActions] Erreur dans deleteStockItem:", error);
     return {
