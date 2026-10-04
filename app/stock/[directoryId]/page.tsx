@@ -18,6 +18,7 @@ import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import ExpiryBadge from "@/components/stock/ExpiryBadge";
 import DirectoryVariantsSection from "@/components/stock/DirectoryVariantsSection";
+import MergeGenericButton from "@/components/stock/MergeGenericButton";
 import styles from "./StockDetail.module.css";
 
 // ============================================
@@ -101,6 +102,11 @@ export default async function GenericDirectoryPage({
         </Link>
 
         <h1 className={styles.name}>{card.name || "Produit inconnu"}</h1>
+
+        {/* La fusion manuelle des doublons (bloc 4, R4) : ce bouton
+            VIDE ce générique dans un autre choisi par Alexis, puis le
+            supprime. Outil dev d'abord — intérêt prod à juger. */}
+        <MergeGenericButton directoryId={directoryId} directoryName={card.name} />
 
         <div className={styles.quantityRow}>
           <span className={styles.quantity}>
