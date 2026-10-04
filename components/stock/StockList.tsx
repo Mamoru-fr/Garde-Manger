@@ -1,30 +1,40 @@
 "use client";
 
+// ============================================
+// StockList — le rendu de la vue principale
+// (bloc 3, niveau 1) : la grille de cartes
+// génériques (mobile / forceCardView) ou la table
+// desktop. Le clic navigue vers la fiche générique
+// (niveaux 2-3 de la pyramide) — le href est
+// calculé par le parent selon la vue.
+// ============================================
+
 import { useEffect, useState } from "react";
-import { StockItemWithExpiryStatus } from "@/lib/types/stockTypes";
-import StockItemCard from "./StockItemCard";
-import StockItemRow from "./StockItemRow";
+import type { GenericStockCard } from "@/lib/services/StockViewService";
+import GenericStockCardComponent from "./GenericStockCard";
+import GenericStockRow from "./GenericStockRow";
 import StockEmptyState from "./StockEmptyState";
 import styles from "./StockList.module.css";
 
 interface StockListProps {
-  items: StockItemWithExpiryStatus[];
-  installationId?: string;
+  cards: GenericStockCard[];
+  getCardHref: (card: GenericStockCard) => string;
+  // Vue globale : colonne/badge des installations porteuses.
+  showInstallation?: boolean;
   isLoading?: boolean;
-  onDetailsClick: (item: StockItemWithExpiryStatus) => void;
-  onEdit?: (item: StockItemWithExpiryStatus) => void;
-  onDelete?: (item: StockItemWithExpiryStatus) => void;
   forceCardView?: boolean; // Force l'affichage en cartes (ex: pour la page /stock)
+  emptyMessage: string;
+  installationId?: string;
 }
 
 export default function StockList({
-  items,
-  installationId,
+  cards,
+  getCardHref,
+  showInstallation = false,
   isLoading = false,
-  onDetailsClick,
-  onEdit,
-  onDelete,
   forceCardView = false,
+  emptyMessage,
+  installationId,
 }: StockListProps) {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -49,27 +59,26 @@ export default function StockList({
   }
 
   // Si vide
-  if (!items.length) {
+  if (!cards.length) {
     return (
-      <StockEmptyState 
+      <StockEmptyState
         installationId={installationId}
-        message="Votre stock est vide" 
+        message={emptyMessage}
       />
     );
   }
 
-  //Mobile OU forceCardView : affichage en cartes
+  // Mobile OU forceCardView : affichage en cartes génériques
   if (isMobile || forceCardView) {
     return (
       <div className={styles.listContainer}>
         <div className={styles.grid}>
-          {items.map(item => (
-            <StockItemCard
-              key={item.id}
-              item={item}
-              onDetailsClick={onDetailsClick}
-              onEdit={onEdit}
-              onDelete={onDelete}
+          {cards.map((card) => (
+            <GenericStockCardComponent
+              key={card.id}
+              card={card}
+              href={getCardHref(card)}
+              showInstallation={showInstallation}
             />
           ))}
         </div>
@@ -77,20 +86,18 @@ export default function StockList({
     );
   }
 
-  // Desktop : affichage en tableau
+  // Desktop : affichage en table de fiches génériques
   return (
     <div className={styles.listContainer}>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
             <tr className={styles.headerRow}>
-              <th className={styles.headerCell}>Objet</th>
+              <th className={styles.headerCell}>Produit</th>
               <th className={styles.headerCell}>Catégorie</th>
               <th className={styles.headerCell}>Quantité</th>
-              <th className={styles.headerCell}>Emplacement</th>
               <th className={styles.headerCell}>Péremption</th>
-              <th className={styles.headerCell}>Prix</th>
-              {installationId === undefined && (
+              {showInstallation && (
                 <th className={styles.headerCell}>Installation</th>
               )}
               <th className={styles.headerCell}>
@@ -99,13 +106,12 @@ export default function StockList({
             </tr>
           </thead>
           <tbody>
-            {items.map(item => (
-              <StockItemRow
-                key={item.id}
-                item={item}
-                onDetailsClick={onDetailsClick}
-                onEdit={onEdit}
-                onDelete={onDelete}
+            {cards.map((card) => (
+              <GenericStockRow
+                key={card.id}
+                card={card}
+                href={getCardHref(card)}
+                showInstallation={showInstallation}
               />
             ))}
           </tbody>

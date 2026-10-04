@@ -1,11 +1,22 @@
 "use client";
 
-import { AlertTriangle, Package, Calendar, Euro } from "lucide-react";
-import { StockStats as StockStatsType } from "@/lib/types/stockTypes";
+// ============================================
+// StockStats — le bandeau de la vue générique
+// (bloc 3, décision Q3) : totalItems compte les
+// FICHES GÉNÉRIQUES, totalLines les lignes
+// d'instance (une par sachet/ajout). Plus aucun
+// total de quantité inter-familles — aucun total
+// honnête n'existe entre grammes et litres.
+// ============================================
+
+import { AlertTriangle, Package, Euro, Layers } from "lucide-react";
+// Type importé de la couche data : import type uniquement,
+// le module charge la DB et le type seul s'efface à la compilation.
+import type { GenericStockStats } from "@/lib/services/StockQueryService";
 import styles from "./StockStats.module.css";
 
 interface StockStatsProps {
-  stats: StockStatsType;
+  stats: GenericStockStats;
   installationId?: string;
 }
 
@@ -22,7 +33,7 @@ export default function StockStats({ stats, installationId }: StockStatsProps) {
 
   return (
     <div className={styles.statsContainer}>
-      {/* Total items */}
+      {/* Total des fiches génériques */}
       <div className={styles.statCard}>
         <div className={styles.statIcon}>
           <Package size={20} />
@@ -30,19 +41,21 @@ export default function StockStats({ stats, installationId }: StockStatsProps) {
         <div className={styles.statContent}>
           <span className={styles.statValue}>{stats.totalItems}</span>
           <span className={styles.statLabel}>
-            {stats.totalItems <= 1 ? "Objet" : "Objets"}
+            {stats.totalItems <= 1 ? "Produit" : "Produits"}
           </span>
         </div>
       </div>
 
-      {/* Total quantité */}
+      {/* Total des lignes d'instance (une par sachet/ajout) */}
       <div className={styles.statCard}>
         <div className={styles.statIcon}>
-          <Package size={20} />
+          <Layers size={20} />
         </div>
         <div className={styles.statContent}>
-          <span className={styles.statValue}>{stats.totalQuantity}</span>
-          <span className={styles.statLabel}>Quantité totale</span>
+          <span className={styles.statValue}>{stats.totalLines}</span>
+          <span className={styles.statLabel}>
+            {stats.totalLines <= 1 ? "Entrée" : "Entrées"}
+          </span>
         </div>
       </div>
 
@@ -59,7 +72,7 @@ export default function StockStats({ stats, installationId }: StockStatsProps) {
         </div>
       )}
 
-      {/* Péremptions proches */}
+      {/* Péremptions proches (comptées par ligne — Q3) */}
       <div className={styles.statCard}>
         <div className={styles.statIcon}>
           <AlertTriangle size={20} />
@@ -69,8 +82,8 @@ export default function StockStats({ stats, installationId }: StockStatsProps) {
             {stats.expiringSoonCount + stats.expiredCount}
           </span>
           <span className={styles.statLabel}>
-            {stats.expiredCount > 0 
-              ? `Périmés (${stats.expiredCount})` 
+            {stats.expiredCount > 0
+              ? `Périmés (${stats.expiredCount})`
               : "À surveiller"}
           </span>
         </div>
