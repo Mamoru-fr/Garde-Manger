@@ -15,6 +15,8 @@ import {
   getVariantDetailsService,
   reassignVariantToGenericService,
 } from "@/lib/services/VariantQueryService";
+import { mergeGenericsService } from "@/lib/services/MergeQueryService";
+import type { MergeGenericsResult } from "@/lib/services/MergeQueryService";
 import type { VariantDetails, VariantLine } from "@/lib/services/VariantViewService";
 
 export class VariantController {
@@ -103,6 +105,44 @@ export class VariantController {
         "[VariantController] Erreur dans reassignVariantToGeneric:",
         error
       );
+      return {
+        success: false,
+        error: "Une erreur est survenue",
+        code: ErrorCodes.INTERNAL_ERROR,
+        details: error,
+      };
+    }
+  }
+
+  // Fusionner deux génériques (R4 — la fusion manuelle des doublons) :
+  // tout ce qui vit sous la source (stock, variantes, barcodes)
+  // déménage vers la cible, puis la source est supprimée.
+  static async mergeGenerics(
+    sourceDirectoryId: string,
+    targetDirectoryId: string
+  ): Promise<ActionResponse<MergeGenericsResult>> {
+    try {
+      if (!sourceDirectoryId || !sourceDirectoryId.trim()) {
+        return {
+          success: false,
+          error: "L'identifiant du générique source est requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+      if (!targetDirectoryId || !targetDirectoryId.trim()) {
+        return {
+          success: false,
+          error: "L'identifiant du générique cible est requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await mergeGenericsService(
+        sourceDirectoryId,
+        targetDirectoryId
+      );
+    } catch (error) {
+      console.error("[VariantController] Erreur dans mergeGenerics:", error);
       return {
         success: false,
         error: "Une erreur est survenue",
