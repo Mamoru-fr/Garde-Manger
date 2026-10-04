@@ -90,6 +90,22 @@
   flex-shrink: 0;
 }
 
+.resultMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+}
+
+.resultDescription {
+  font-size: 0.78rem;
+  color: #9a8a76;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

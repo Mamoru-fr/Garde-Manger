@@ -42,7 +42,10 @@ interface ReassignVariantModalProps {
   // Le générique actuel : retiré des résultats (destination ≠ origine).
   currentDirectoryId: string;
   // Appelé après un déplacement réussi (la section recharge).
-  onReassigned: (newGenericDirectoryId: string) => void;
+  // Le NOM de la cible voyage avec l'id (hotfix R4 : le bandeau de
+  // succès nomme la destination — « déplacé vers un autre générique »
+  // muette a coûté une fausse piste « ça n'a pas marché » le 04/10).
+  onReassigned: (newGenericDirectoryId: string, newGenericName?: string) => void;
 }
 
 export default function ReassignVariantModal({
@@ -130,12 +133,15 @@ export default function ReassignVariantModal({
           result.data.genericDirectoryId
         );
         const newDirectoryId = result.data.genericDirectoryId;
+        // Le nom de la cible est capturé AVANT handleClose (qui reset
+        // results) — le bandeau du parent nomme la destination exacte.
+        const selectedName = results.find((item) => item.id === selectedId)?.name;
         // handleClose reset la modale ET appelle onClose (parent) ;
         // onReassigned ensuite — le parent lit encore le label dans
         // la closure de son rendu courant (reassignTarget non-null
         // au moment de l'appel), le message de succès reste exact.
         handleClose();
-        onReassigned(newDirectoryId);
+        onReassigned(newDirectoryId, selectedName);
       } else {
         setError(result.error || "Échec de la réaffiliation");
       }
@@ -197,10 +203,20 @@ export default function ReassignVariantModal({
                       : styles.resultItem
                   }
                 >
-                  <span className={styles.resultName}>{item.name}</span>
-                  {item.brand && (
-                    <span className={styles.resultBrand}>{item.brand}</span>
-                  )}
+                  {/* Nom + marque + description (hotfix R4 : distinguer
+                      les homonymes — deux « Infusion detox » ne doivent
+                      plus se ressembler à l'écran) */}
+                  <span className={styles.resultMain}>
+                    <span className={styles.resultName}>{item.name}</span>
+                    {item.brand && (
+                      <span className={styles.resultBrand}>{item.brand}</span>
+                    )}
+                    {item.description && (
+                      <span className={styles.resultDescription}>
+                        {item.description}
+                      </span>
+                    )}
+                  </span>
                   {selectedId === item.id && (
                     <Check size={16} className={styles.resultCheck} />
                   )}

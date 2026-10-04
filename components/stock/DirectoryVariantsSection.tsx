@@ -123,14 +123,21 @@ export default function DirectoryVariantsSection({
 
   // Le déménagement a réussi : la modale s'est refermée, on
   // recharge la liste (la variante a quitté ce générique) et
-  // on le dit — la disparition seule serait muette.
-  const handleReassigned = async () => {
+  // on le dit — la disparition seule serait muette. Le bandeau
+  // NOMME la destination (hotfix R4) : « un autre générique » muet
+  // a coûté une fausse piste le 04/10.
+  const handleReassigned = async (
+    _newDirectoryId: string,
+    newGenericName?: string
+  ) => {
     const movedLabel = reassignTarget ? reassignTarget.brandLabel : null;
     setIsModalOpen(false);
     setReassignTarget(null);
     setSuccessMessage(
       movedLabel
-        ? `« ${movedLabel} » a été déplacé vers un autre générique.`
+        ? newGenericName
+          ? `« ${movedLabel} » a été déplacé vers « ${newGenericName} ».`
+          : `« ${movedLabel} » a été déplacé vers un autre générique.`
         : "Variante déplacée vers un autre générique."
     );
     await loadVariants();
