@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import {
-  getInstallationStock,
-  getUserStock,
+  getInstallationGenericStock,
+  getUserGenericStock,
   updateStockItem,
   deleteStockItem,
 } from "@/lib/actions/StockActions";
-import { StockFilters, StockResponse } from "@/lib/types/stockTypes";
+import type { GenericStockFilters } from "@/lib/services/StockQueryService";
+import type { UnitFamily } from "@/lib/services/QuantityService";
 
-// Endpoint pour récupérer le stock global de l'utilisateur
+// Endpoint pour récupérer les fiches génériques du stock (bloc 3, niveau 1)
 export async function GET(request: NextRequest) {
   try {
     const headers = await getAuthHeaders();
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     // Récupérer les filtres de l'URL
     const { searchParams } = new URL(request.url);
-    const filters: StockFilters = {
+    const filters: GenericStockFilters = {
       searchQuery: searchParams.get("searchQuery") || undefined,
       category: searchParams.get("category") || undefined,
       installationId: searchParams.get("installationId") || undefined,
@@ -32,17 +33,16 @@ export async function GET(request: NextRequest) {
       expiryStatus: searchParams.get("expiryStatus") as any || undefined,
       sortBy: searchParams.get("sortBy") as any || "expiry_date",
       sortOrder: searchParams.get("sortOrder") as any || "asc",
+      // Q4 : famille d'unités du tri par quantité.
+      quantityFamily: (searchParams.get("quantityFamily") as UnitFamily) || null,
     };
 
     // Déterminer si on veut le stock global ou d'une installation spécifique
     const installationId = searchParams.get("installationId");
-    let result: StockResponse;
 
-    if (installationId) {
-      result = await getInstallationStock(installationId, filters);
-    } else {
-      result = await getUserStock(filters);
-    }
+    const result = installationId
+      ? await getInstallationGenericStock(installationId, filters)
+      : await getUserGenericStock(filters);
 
     return NextResponse.json(result);
   } catch (error) {

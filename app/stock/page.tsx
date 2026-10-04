@@ -1,9 +1,19 @@
 import { redirect } from "next/navigation";
-import { Warehouse } from "lucide-react";
-import { getUserStock } from "@/lib/actions/StockActions";
+import { getUserGenericStock } from "@/lib/actions/StockActions";
+import {
+  uniqueInstallationsFromCards,
+  uniqueCategoriesFromCards,
+} from "@/lib/services/StockViewService";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import StockClient from "./StockClient";
+
+// ============================================
+// Page du stock global (bloc 3, niveau 1) :
+// les fiches génériques toutes installations
+// confondues (Q1a). Pas de troncature à 5 —
+// les cartes agrégées sont la vue complète.
+// ============================================
 
 export default async function GlobalStockPage() {
   // Récupérer la session
@@ -14,47 +24,24 @@ export default async function GlobalStockPage() {
     redirect("/login");
   }
 
-  // Charger les données initiales du stock
-  const initialDataResult = await getUserStock({
+  // Charger les fiches génériques du stock global (tri par défaut : péremption)
+  const initialDataResult = await getUserGenericStock({
     sortBy: "expiry_date",
     sortOrder: "asc",
   });
 
-  // Formater les données pour le client (limité à 5 items)
-  const initialData = initialDataResult.success
-    ? {
-        items: (initialDataResult.data || []).slice(0, 5), // Limite à 5 items
-        stats: initialDataResult.stats || null,
-        installations: initialDataResult.data
-          ? initialDataResult.data.reduce(
-              (acc: { id: string; name: string }[], item: any) => {
-                const exists = acc.some((i) => i.id === item.installationId);
-                if (!exists && item.installationId && item.installationName) {
-                  acc.push({ id: item.installationId, name: item.installationName });
-                }
-                return acc;
-              },
-              []
-            )
-          : [],
-        categories: initialDataResult.data
-          ? initialDataResult.data.reduce(
-              (acc: { id: string; name: string }[], item: any) => {
-                if (item.category && !acc.some((c) => c.id === item.category)) {
-                  acc.push({ id: item.category, name: item.category });
-                }
-                return acc;
-              },
-              []
-            )
-          : [],
-      }
-    : {
-        items: [],
-        stats: null,
-        installations: [],
-        categories: [],
-      };
+  const cards = initialDataResult.success ? initialDataResult.cards ?? [] : [];
+  const stats = initialDataResult.success ? initialDataResult.stats ?? null : null;
 
-  return <StockClient initialData={initialData} forceCardView />;
+  return (
+    <StockClient
+      initialData={{
+        cards,
+        stats,
+        installations: uniqueInstallationsFromCards(cards),
+        categories: uniqueCategoriesFromCards(cards),
+      }}
+      forceCardView
+    />
+  );
 }

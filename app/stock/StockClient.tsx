@@ -1,21 +1,42 @@
 "use client";
 
+// ============================================
+// StockClient — la vue principale du stock en
+// fiches génériques (bloc 3, niveau 1 de la
+// pyramide approuvée par Alexis).
+//
+// Niveau 1 : les cartes génériques, toutes
+// installations (vue globale) ou dans une
+// installation (vue installation). Le clic
+// navigue vers la fiche générique (niveaux 2-3)
+// — plus de modale d'édition ici : l'édition
+// et la suppression vivent au niveau 3.
+// ============================================
+
 import { useState, useCallback } from "react";
 import { Warehouse, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
-import { StockItemWithExpiryStatus } from "@/lib/types/stockTypes";
-import type { StockFilters, StockStats } from "@/lib/types/stockTypes";
+import type { GenericStockCard } from "@/lib/services/StockViewService";
+import {
+  uniqueInstallationsFromCards,
+  uniqueCategoriesFromCards,
+} from "@/lib/services/StockViewService";
+// Types de la couche data : import type uniquement (le module
+// charge la DB — le type s'efface à la compilation).
+import type {
+  GenericStockFilters,
+  GenericStockStats,
+} from "@/lib/services/StockQueryService";
 import StockList from "@/components/stock/StockList";
 import StockFiltersComponent from "@/components/stock/StockFilters";
 import StockStatsComponent from "@/components/stock/StockStats";
-import StockDetailsModal from "@/components/stock/StockDetailsModal";
 import StockEmptyState from "@/components/stock/StockEmptyState";
 import styles from "./Stock.module.css";
 
 interface StockClientProps {
   initialData?: {
-    items: StockItemWithExpiryStatus[];
-    stats: StockStats | null;
+    cards: GenericStockCard[];
+    stats: GenericStockStats | null;
     installations: { id: string; name: string }[];
     categories: { id: string; name: string }[];
   };
@@ -24,21 +45,46 @@ interface StockClientProps {
   forceCardView?: boolean; // Force l'affichage en cartes (ex: pour la page /stock)
 }
 
+// --------------------------------------------
+// Relève des dates reçues du JSON de l'API :
+// le fetch renvoie des chaînes ISO, les types
+// de la vue exigent des Date. Sans relève, le
+// badge de péremption calcule sur n'importe
+// quoi et ment silencieusement.
+// --------------------------------------------
+function reviveDate(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string") return new Date(value);
+  return null;
+}
+
+function reviveCard(raw: unknown): GenericStockCard {
+  const card = raw as GenericStockCard;
+  return {
+    ...card,
+    nearestExpiryDate: reviveDate(card.nearestExpiryDate),
+    lines: (card.lines ?? []).map((line) => ({
+      ...line,
+      purchaseDate: reviveDate(line.purchaseDate),
+      expiryDate: reviveDate(line.expiryDate),
+      addedDate: reviveDate(line.addedDate),
+    })),
+  };
+}
+
 export default function StockClient({
   initialData,
   installationId,
   installationName,
   forceCardView = false,
 }: StockClientProps) {
-  const [items, setItems] = useState<StockItemWithExpiryStatus[]>(initialData?.items || []);
-  const [stats, setStats] = useState<StockStats | null>(initialData?.stats || null);
-  const [filters, setFilters] = useState<StockFilters>({
+  const [cards, setCards] = useState<GenericStockCard[]>(initialData?.cards || []);
+  const [stats, setStats] = useState<GenericStockStats | null>(initialData?.stats || null);
+  const [filters, setFilters] = useState<GenericStockFilters>({
     sortBy: "expiry_date",
     sortOrder: "asc",
-    ...(installationId ? { installationId } : {}),
   });
   const [isLoading, setIsLoading] = useState(!initialData);
-  const [selectedItem, setSelectedItem] = useState<StockItemWithExpiryStatus | null>(null);
   const [installations, setInstallations] = useState<{ id: string; name: string }[]>(initialData?.installations || []);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(initialData?.categories || []);
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +95,13 @@ export default function StockClient({
   const [prevInitialData, setPrevInitialData] = useState(initialData);
   if (initialData !== prevInitialData) {
     setPrevInitialData(initialData);
-    setItems(initialData?.items || []);
+    setCards(initialData?.cards || []);
     setStats(initialData?.stats || null);
     setInstallations(initialData?.installations || []);
     setCategories(initialData?.categories || []);
   }
 
-  // Charger les données depuis le client
+  // Charger les fiches génériques depuis le client
   const loadStock = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -72,6 +118,7 @@ export default function StockClient({
       }
       if (filters.sortBy) params.set("sortBy", filters.sortBy);
       if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+      if (filters.quantityFamily) params.set("quantityFamily", filters.quantityFamily);
 
       const url = installationId
         ? `/api/stock?installationId=${installationId}&${params.toString()}`
@@ -82,37 +129,16 @@ export default function StockClient({
 
       if (!result.success) {
         setError(result.error || "Erreur lors du chargement du stock");
-        setItems([]);
+        setCards([]);
         setStats(null);
       } else {
-        setItems(result.data || []);
+        // Les dates ISO du JSON redeviennent des Date (voir reviveCard).
+        const loadedCards: GenericStockCard[] = (result.cards || []).map(reviveCard);
+        setCards(loadedCards);
         setStats(result.stats || null);
-
-        // Extraire les installations et catégories uniques
-        if (result.data) {
-          const uniqueInstallations = result.data.reduce(
-            (acc: { id: string; name: string }[], item: StockItemWithExpiryStatus) => {
-              const exists = acc.some((i) => i.id === item.installationId);
-              if (!exists && item.installationId && item.installationName) {
-                acc.push({ id: item.installationId, name: item.installationName });
-              }
-              return acc;
-            },
-            []
-          );
-          setInstallations(uniqueInstallations);
-
-          const uniqueCategories = result.data.reduce(
-            (acc: { id: string; name: string }[], item: StockItemWithExpiryStatus) => {
-              if (item.category && !acc.some((c) => c.id === item.category)) {
-                acc.push({ id: item.category, name: item.category });
-              }
-              return acc;
-            },
-            []
-          );
-          setCategories(uniqueCategories);
-        }
+        setInstallations(uniqueInstallationsFromCards(loadedCards));
+        setCategories(uniqueCategoriesFromCards(loadedCards));
+        console.log(`[StockClient] ${loadedCards.length} fiche(s) générique(s) chargée(s)`);
       }
     } catch (err) {
       setError("Erreur réseau lors du chargement du stock");
@@ -123,96 +149,24 @@ export default function StockClient({
   }, [filters, installationId]);
 
   // Gestion des filtres
-  const handleFilterChange = useCallback((newFilters: StockFilters) => {
+  const handleFilterChange = useCallback((newFilters: GenericStockFilters) => {
     setFilters(newFilters);
   }, []);
 
-  // Gestion de la modale
-  const handleItemClick = useCallback((item: StockItemWithExpiryStatus) => {
-    setSelectedItem(item);
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setSelectedItem(null);
-  }, []);
-
-  // Rafraîchir après modification/suppression
+  // Rafraîchir (bouton Réessayer)
   const handleRefresh = useCallback(() => {
     loadStock();
-    setSelectedItem(null);
   }, [loadStock]);
 
-  // Actions sur les items
-  const handleSave = useCallback(
-    async (updatedItem: StockItemWithExpiryStatus) => {
-      if (!updatedItem.installationId || !updatedItem.id) return;
-
-      try {
-        const response = await fetch("/api/stock", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            installationId: updatedItem.installationId,
-            objectInstallationId: updatedItem.id,
-            updates: {
-              quantity: updatedItem.quantity,
-              location: updatedItem.location,
-              purchaseDate: updatedItem.purchaseDate,
-              expiryDate: updatedItem.expiryDate,
-              lotNumber: updatedItem.lotNumber,
-              price: updatedItem.price,
-              notes: updatedItem.notes,
-              shopId: updatedItem.shopId,
-            },
-          }),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          handleRefresh();
-        } else {
-          setError(result.error || "Erreur lors de la mise à jour");
-        }
-      } catch (err) {
-        setError("Erreur lors de la mise à jour");
-        console.error("[StockClient] Erreur save:", err);
-      }
-    },
-    [handleRefresh]
-  );
-
-  const handleDelete = useCallback(
-    async (item: StockItemWithExpiryStatus) => {
-      if (!item.installationId || !item.id) return;
-
-      try {
-        const response = await fetch("/api/stock", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            installationId: item.installationId,
-            objectInstallationId: item.id,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          handleRefresh();
-        } else {
-          setError(result.error || "Erreur lors de la suppression");
-        }
-      } catch (err) {
-        setError("Erreur lors de la suppression");
-        console.error("[StockClient] Erreur delete:", err);
-      }
-    },
-    [handleRefresh]
+  // Le clic sur une carte navigue vers sa fiche générique :
+  // niveaux 2-3 de la pyramide (routes posées au round 3,
+  // pages construites aux rounds suivants).
+  const getCardHref = useCallback(
+    (card: GenericStockCard) =>
+      installationId
+        ? `/installations/${installationId}/stock/${card.id}`
+        : `/stock/${card.id}`,
+    [installationId]
   );
 
   return (
@@ -239,8 +193,8 @@ export default function StockClient({
           </h1>
           <p className={styles.subtitle}>
             {installationId
-              ? "Gestion des objets dans cette installation"
-              : "Tous vos objets dans toutes vos installations"}
+              ? "Vos produits dans cette installation"
+              : "Tous vos produits dans toutes vos installations"}
           </p>
         </div>
         {installationId && (
@@ -254,7 +208,7 @@ export default function StockClient({
         )}
       </header>
 
-      {/* Statistiques */}
+      {/* Statistiques (Q3 : génériques + lignes) */}
       <div style={{ padding: "2rem 0 0 0" }}>
         {stats && <StockStatsComponent stats={stats} />}
       </div>
@@ -279,33 +233,26 @@ export default function StockClient({
         ) : error ? (
           <div className={styles.errorContainer}>
             <p className={styles.errorMessage}>{error}</p>
-            <button onClick={loadStock} className={styles.retryButton}>
+            <button onClick={handleRefresh} className={styles.retryButton}>
               Réessayer
             </button>
           </div>
-        ) : items.length === 0 ? (
+        ) : cards.length === 0 ? (
           <StockEmptyState
             message={installationId ? `Le stock de cette installation est vide` : "Votre stock global est vide"}
             installationId={installationId}
           />
         ) : (
           <StockList
-            items={items}
-            onDetailsClick={handleItemClick}
+            cards={cards}
+            getCardHref={getCardHref}
+            showInstallation={!installationId}
             forceCardView={forceCardView}
+            emptyMessage={installationId ? "Le stock de cette installation est vide" : "Votre stock global est vide"}
+            installationId={installationId}
           />
         )}
       </main>
-
-      {/* Modale de détails */}
-      {selectedItem && (
-        <StockDetailsModal
-          item={selectedItem}
-          onClose={handleCloseModal}
-          onSave={handleSave}
-          onDelete={handleDelete}
-        />
-      )}
     </div>
   );
 }

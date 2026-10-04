@@ -1,11 +1,19 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { getInstallationStock } from "@/lib/actions/StockActions";
+import { getInstallationGenericStock } from "@/lib/actions/StockActions";
+import { uniqueCategoriesFromCards } from "@/lib/services/StockViewService";
 import { db } from "@/lib/db/drizzle";
 import { installations, userInstallations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import StockClient from "@/app/stock/StockClient";
+
+// ============================================
+// Page du stock d'une installation (bloc 3,
+// niveau 1 dans le périmètre d'une installation).
+// Les fiches génériques y sont portées par les
+// mêmes lignes — le clic y mène au niveau 3.
+// ============================================
 
 export default async function InstallationStockPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -36,40 +44,23 @@ export default async function InstallationStockPage({ params }: { params: Promis
     redirect("/installations");
   }
 
-  // Charger les données initiales du stock pour cette installation
-  const initialDataResult = await getInstallationStock(installationId, {
+  // Charger les fiches génériques du stock de cette installation
+  const initialDataResult = await getInstallationGenericStock(installationId, {
     sortBy: "expiry_date",
     sortOrder: "asc",
   });
 
-  // Formater les données pour le client
-  const initialData = initialDataResult.success
-    ? {
-        items: initialDataResult.data || [],
-        stats: initialDataResult.stats || null,
-        installations: [],
-        categories: initialDataResult.data
-          ? initialDataResult.data.reduce(
-              (acc: { id: string; name: string }[], item: any) => {
-                if (item.category && !acc.some((c) => c.id === item.category)) {
-                  acc.push({ id: item.category, name: item.category });
-                }
-                return acc;
-              },
-              []
-            )
-          : [],
-      }
-    : {
-        items: [],
-        stats: null,
-        installations: [],
-        categories: [],
-      };
+  const cards = initialDataResult.success ? initialDataResult.cards ?? [] : [];
+  const stats = initialDataResult.success ? initialDataResult.stats ?? null : null;
 
   return (
     <StockClient
-      initialData={initialData}
+      initialData={{
+        cards,
+        stats,
+        installations: [], // vue installation : pas de filtre par installation
+        categories: uniqueCategoriesFromCards(cards),
+      }}
       installationId={installationId}
       installationName={installation.name}
     />
