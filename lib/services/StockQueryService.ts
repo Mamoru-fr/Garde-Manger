@@ -17,7 +17,7 @@
 //   valeur en base de la famille.
 // ============================================
 
-import { and, eq, gte, isNull, like, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, like, lte } from "drizzle-orm";
 
 import { db } from "@/lib/db/drizzle";
 import {
@@ -229,8 +229,12 @@ export async function getGenericStockView(
   //    le label mentirait (§3.3 : la vérité = toutes les saisies du
   //    générique dans le périmètre). Ils sélectionnent les GÉNÉRIQUES
   //    concernés, puis on charge toutes leurs lignes.
+  // NB : périmètre et listes = inArray, jamais `sql`... = ANY(...)`` :
+  // avec le driver Neon HTTP, un array interpolé dans sql`` éclate en
+  // params séparés ($1, $2...) et Postgres rejette ANY (($1, $2))
+  // (22P02 / 42809 — constaté le 04/10 sur /stock et /installations/[id]/stock).
   const directoryFilters = and(
-    sql`${objectInstallation.installationId} = ANY(${installationIds})`,
+    inArray(objectInstallation.installationId, installationIds),
     ...(filters.searchQuery
       ? [like(objectDirectory.name, `%${filters.searchQuery}%`)]
       : []),
@@ -306,8 +310,8 @@ export async function getGenericStockView(
     //     agrégat complet, jamais partiel.
     rows = await fromLines().where(
       and(
-        sql`${objectInstallation.installationId} = ANY(${installationIds})`,
-        sql`${objectInstallation.objectDirectoryId} = ANY(${directoryIds})`
+        inArray(objectInstallation.installationId, installationIds),
+        inArray(objectInstallation.objectDirectoryId, directoryIds)
       )
     );
   } else {
