@@ -13,6 +13,7 @@
 
 import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
+import { isNetworkError } from "@/lib/utils/network-errors";
 
 // Vérification pour empêcher l'utilisation côté client
 if (typeof window !== "undefined") {
@@ -35,12 +36,29 @@ export async function getAuthHeaders() {
  * La session Better-Auth de la requête courante, sans détour.
  * Retourne null si non connecté (la session expire, l'utilisateur se
  * déconnecte… à chaque requête on relit la vérité, plus de valeur figée).
+ *
+ * Une erreur n'est PAS une absence de session. L'ancien comportement
+ * (tout catch → null) faisait pire que mentir : une micro-coupure
+ * réseau vers Neon (ConnectTimeoutError — constaté 3 fois le 04/10)
+ * transformait « DB injoignable » en « non connecté », et déconnectait
+ * l'utilisateur en silence. Désormais l'erreur remonte : la page
+ * montrera une vraie erreur serveur plutôt qu'un mensonge d'état.
  */
 export async function getCurrentSession() {
   try {
     return await auth.api.getSession({ headers: await headers() });
   } catch (error) {
-    console.warn("⚠️ [Auth] Erreur lors de la récupération de la session:", error);
-    return null;
+    if (isNetworkError(error)) {
+      console.error(
+        "❌ [Auth] DB injoignable pendant la lecture de session (micro-coupure réseau ?) :",
+        error
+      );
+    } else {
+      console.error(
+        "❌ [Auth] Erreur lors de la récupération de la session :",
+        error
+      );
+    }
+    throw error;
   }
 }
