@@ -31,12 +31,14 @@ import {
 
 import {
   buildGenericCards,
+  buildInstallationBreakdown,
   calculateDaysUntilExpiry,
   getExpiryStatus,
 } from "./StockViewService";
 import type {
   ExpiryStatus,
   GenericStockCard,
+  InstallationBreakdownEntry,
   StockRowInput,
 } from "./StockViewService";
 // Les types de la spec vivent dans QuantityService, la source de vérité
@@ -55,6 +57,8 @@ import type {
 export interface GenericStockFilters {
   searchQuery?: string; // recherche sur le NOM du générique (§2.1)
   category?: string;
+  // Niveau 2 de la pyramide : une seule fiche générique par son id.
+  directoryId?: string;
   // Périmètre : null = toutes les installations accessibles (vue globale),
   // un id = le stock d'une seule installation (vue installation).
   installationId?: string | null;
@@ -79,16 +83,45 @@ export interface GenericStockStats {
   installationsDistribution: Record<string, number>;
 }
 
+// Le contexte de construction de la vue : ce dont les couches amont
+// (l'encadré « quantité par installation » du niveau 2) ont besoin pour
+// recalculer UN SOUS-ENSEMBLE avec les mêmes règles — les unités, les
+// préférences, l'unité legacy. Jamais recalculé : chargé une fois ici.
+export interface StockViewContext {
+  unitsById: Record<string, QuantityUnit>;
+  preferences: DisplayPreferences;
+  legacyUnit: QuantityUnit;
+}
+
 // Résultat interne du service : ok, ou un code d'erreur discriminé.
 export type GenericStockView =
-  | { ok: true; cards: GenericStockCard[]; stats: GenericStockStats }
+  | { ok: true; cards: GenericStockCard[]; stats: GenericStockStats; context: StockViewContext }
   | { ok: false; code: "NO_INSTALLATION" | "INSTALLATION_ACCESS_DENIED" };
+
+// La fiche générique globale (niveau 2) : la carte unique + son
+// encadré « quantité par installation ».
+export type GenericDirectoryDetail =
+  | {
+      ok: true;
+      card: GenericStockCard;
+      breakdown: InstallationBreakdownEntry[];
+    }
+  | { ok: false; code: "NO_INSTALLATION" | "INSTALLATION_ACCESS_DENIED" | "NOT_FOUND" };
 
 // Format de retour des actions (orchestration de session en plus).
 export interface GenericStockActionResult {
   success: boolean;
   cards?: GenericStockCard[];
   stats?: GenericStockStats;
+  error?: string;
+  code?: string;
+}
+
+// Format de retour de l'action du niveau 2 (fiche générique globale).
+export interface GenericDirectoryDetailResult {
+  success: boolean;
+  card?: GenericStockCard;
+  breakdown?: InstallationBreakdownEntry[];
   error?: string;
   code?: string;
 }
@@ -193,13 +226,18 @@ export async function getGenericStockView(
     preferences[pref.family] = pref.unitId;
   }
 
+  // Le contexte de la vue, chargé une fois : le niveau 2 (fiche générique
+  // globale) s'en sert pour recalculer l'encadré « quantité par
+  // installation » avec les mêmes unités et préférences.
+  const context: StockViewContext = { unitsById, preferences, legacyUnit };
+
   // 3. Les installations accessibles et les rôles (permissions).
   const memberships = await db.query.userInstallations.findMany({
     where: eq(userInstallations.userId, userId),
     with: { installation: true },
   });
   if (!memberships.length) {
-    return { ok: true, cards: [], stats: emptyGenericStats() };
+    return { ok: true, cards: [], stats: emptyGenericStats(), context };
   }
 
   // Le rôle est nullable en base (default "viewer") : le map l'accepte,
@@ -235,6 +273,9 @@ export async function getGenericStockView(
   // (22P02 / 42809 — constaté le 04/10 sur /stock et /installations/[id]/stock).
   const directoryFilters = and(
     inArray(objectInstallation.installationId, installationIds),
+    ...(filters.directoryId
+      ? [eq(objectDirectory.id, filters.directoryId)]
+      : []),
     ...(filters.searchQuery
       ? [like(objectDirectory.name, `%${filters.searchQuery}%`)]
       : []),
@@ -302,7 +343,7 @@ export async function getGenericStockView(
       .where(directoryFilters);
 
     if (!matchingDirectories.length) {
-      return { ok: true, cards: [], stats: emptyGenericStats() };
+      return { ok: true, cards: [], stats: emptyGenericStats(), context };
     }
     const directoryIds = matchingDirectories.map((row) => row.directoryId);
 
@@ -425,7 +466,47 @@ export async function getGenericStockView(
     }
   }
 
-  return { ok: true, cards: sortedCards, stats };
+  return { ok: true, cards: sortedCards, stats, context };
+}
+
+// --------------------------------------------
+// getGenericDirectoryDetail — la fiche générique globale (niveau 2
+// de la pyramide) : la carte du générique dans TOUT le périmètre
+// de l'utilisateur + l'encadré « quantité par installation ».
+//
+// Réutilisation, pas refonte : le filtre directoryId de la vue
+// existante sélectionne les lignes du générique, le builder pur
+// fait la carte, le breakdown pur fait l'encadré. Une seule
+// vérité par calcul, jamais deux.
+// --------------------------------------------
+export async function getGenericDirectoryDetail(
+  userId: string,
+  directoryId: string
+): Promise<GenericDirectoryDetail> {
+  const view = await getGenericStockView(userId, { directoryId });
+  if (!view.ok) {
+    // NO_INSTALLATION ou INSTALLATION_ACCESS_DENIED : le périmètre
+    // lui-même est en cause, pas la fiche.
+    return { ok: false, code: view.code };
+  }
+
+  const card = view.cards.find((c) => c.id === directoryId) ?? null;
+  if (!card) {
+    // Fiche inconnue, ou connue mais sans aucune ligne dans le
+    // périmètre de l'utilisateur : niveau 2 = fiche de STOCK, elle
+    // n'existe que portée par des lignes.
+    return { ok: false, code: "NOT_FOUND" };
+  }
+
+  // L'encadré : mêmes unités, mêmes préférences, même legacy (§4.2).
+  const breakdown = buildInstallationBreakdown(
+    card,
+    view.context.unitsById,
+    view.context.preferences,
+    view.context.legacyUnit
+  );
+
+  return { ok: true, card, breakdown };
 }
 
 // Le bandeau vide (aucune installation ou stock vide).

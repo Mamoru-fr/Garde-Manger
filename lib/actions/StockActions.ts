@@ -23,10 +23,12 @@ import { StockResponse } from "@/lib/types/stockTypes";
 import { ErrorCodes } from "@/lib/types";
 import {
   getGenericStockView,
+  getGenericDirectoryDetail,
 } from "@/lib/services/StockQueryService";
 import type {
   GenericStockFilters,
   GenericStockActionResult,
+  GenericDirectoryDetailResult,
 } from "@/lib/services/StockQueryService";
 
 /**
@@ -106,6 +108,57 @@ export async function getInstallationGenericStock(
     return {
       success: false,
       error: "Erreur lors de la récupération du stock",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * FICHE GÉNÉRIQUE GLOBALE (bloc 3, niveau 2 de la pyramide) : la
+ * carte du générique dans TOUT le périmètre de l'utilisateur + l'encadré
+ * « quantité par installation ». L'action orchestre (session) et
+ * délègue au service (règle des couches).
+ */
+export async function getGenericDirectoryCard(
+  directoryId: string
+): Promise<GenericDirectoryDetailResult> {
+  try {
+    console.log("[StockActions] getGenericDirectoryCard:", directoryId);
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const detail = await getGenericDirectoryDetail(session.user.id, directoryId);
+    if (!detail.ok) {
+      if (detail.code === "NOT_FOUND") {
+        // Fiche inconnue ou sans aucune ligne dans le périmètre :
+        // le niveau 2 est une fiche de STOCK, pas un annuaire.
+        return {
+          success: false,
+          error: "Fiche générique introuvable dans votre stock",
+          code: ErrorCodes.NOT_FOUND,
+        };
+      }
+      return {
+        success: false,
+        error: "Aucune installation accessible",
+        code: detail.code,
+      };
+    }
+
+    return { success: true, card: detail.card, breakdown: detail.breakdown };
+  } catch (error) {
+    console.error("[StockActions] Erreur dans getGenericDirectoryCard:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération de la fiche",
       code: ErrorCodes.INTERNAL_ERROR,
     };
   }
