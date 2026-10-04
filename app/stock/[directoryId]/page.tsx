@@ -17,6 +17,7 @@ import {
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import ExpiryBadge from "@/components/stock/ExpiryBadge";
+import DirectoryVariantsSection from "@/components/stock/DirectoryVariantsSection";
 import styles from "./StockDetail.module.css";
 
 // ============================================
@@ -181,6 +182,15 @@ export default async function GenericDirectoryPage({
             </ul>
           )}
         </section>
+
+        {/* La section repliable « voir les différents X » (bloc 4, Q1a) :
+            les marques du générique, chargées à la demande, chaque ligne
+            pointe vers sa fiche détail dédiée (Q2b). Le bouton
+            « réaffilier » de Q3a viendra au round 3. */}
+        <DirectoryVariantsSection
+          directoryId={directoryId}
+          directoryName={card.name}
+        />
       </main>
     </div>
   );

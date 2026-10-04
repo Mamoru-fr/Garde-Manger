@@ -1,0 +1,137 @@
+/* ============================================
+   SECTION « VOIR LES DIFFÉRENTS X » (bloc 4, round 2)
+   Palette café du chantier : fond #fdf6e8, brun
+   #4a2c14 → #8b4513, cartes blanches, radius 12.
+   ============================================ */
+
+.variantsCard {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(46, 26, 16, 0.08);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #4a2c14;
+  cursor: pointer;
+  text-align: left;
+}
+
+.toggle:hover {
+  color: #8b4513;
+}
+
+.toggleIcon {
+  flex-shrink: 0;
+}
+
+.chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.content {
+  margin-top: 0.75rem;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #7a6a58;
+}
+
+.error {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #b3261e;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.variantList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.variantLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.variantLink + .variantLink {
+  border-top: 1px solid #f0e6d8;
+}
+
+.variantLink:hover {
+  background: #fdf6e8;
+}
+
+.variantBrand {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #2c1a0e;
+  min-width: 0;
+}
+
+.variantMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Pastille Nutri-Score aux couleurs officielles A→E. */
+.nutriscoreBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.noNutriscore {
+  font-size: 0.8rem;
+  color: #7a6a58;
+}
