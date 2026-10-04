@@ -24,7 +24,7 @@ export default async function InstallationStockPage({ params }: { params: Promis
   const session = await auth.api.getSession({ headers });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect("/connexion");
   }
 
   // Vérifier que l'utilisateur a accès à cette installation

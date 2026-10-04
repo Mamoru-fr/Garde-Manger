@@ -21,7 +21,7 @@ export default async function GlobalStockPage() {
   const session = await auth.api.getSession({ headers });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect("/connexion");
   }
 
   // Charger les fiches génériques du stock global (tri par défaut : péremption)

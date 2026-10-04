@@ -62,7 +62,7 @@ export default async function GenericDirectoryPage({
   const session = await auth.api.getSession({ headers });
 
   if (!session?.user) {
-    redirect("/login");
+    redirect("/connexion");
   }
 
   // Charger la fiche générique globale (carte + encadré par installation).
