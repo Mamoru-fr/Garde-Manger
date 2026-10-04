@@ -246,6 +246,43 @@ export function buildGenericCards(
 }
 
 // --------------------------------------------
+// Helpers du niveau 1 (round 3) — dérivation de
+// la barre de filtres depuis les cartes : les
+// pages serveur et le client (après fetch) en ont
+// tous deux besoin, la logique vit ici, une fois.
+// --------------------------------------------
+
+// Les installations qui portent au moins une fiche, sans doublon,
+// ordre de première apparition.
+export function uniqueInstallationsFromCards(
+  cards: GenericStockCard[]
+): { id: string; name: string }[] {
+  const acc: { id: string; name: string }[] = [];
+  for (const card of cards) {
+    for (const installation of card.installations) {
+      if (!acc.some((i) => i.id === installation.id)) {
+        acc.push({ id: installation.id, name: installation.name });
+      }
+    }
+  }
+  return acc;
+}
+
+// Les catégories portées par au moins une fiche, sans doublon —
+// les fiches sans catégorie ne produisent pas d'option vide.
+export function uniqueCategoriesFromCards(
+  cards: GenericStockCard[]
+): { id: string; name: string }[] {
+  const acc: { id: string; name: string }[] = [];
+  for (const card of cards) {
+    if (card.category && !acc.some((c) => c.id === card.category)) {
+      acc.push({ id: card.category, name: card.category });
+    }
+  }
+  return acc;
+}
+
+// --------------------------------------------
 // Helpers de péremption — calculs de vue, purs.
 // (Déplacés depuis StockActions le 03/10 : les calculs de vue de stock
 // vivent dans le service, les actions délèguent — règle des couches.)
