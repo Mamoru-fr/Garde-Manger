@@ -13,7 +13,7 @@ import {
   shops,
 } from "@/lib/db/schema";
 import { ActionResponse, ErrorCodes, GlobalObjectWithInstances, ObjectInstance, NutritionalData } from "@/lib/types";
-import { eq, and, like, or, count, desc, asc, gt, lt, lte, isNotNull } from "drizzle-orm";
+import { eq, and, like, or, count, desc, asc, gt, lt, lte, isNotNull, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // ============================================================================
@@ -1614,6 +1614,323 @@ export async function listShopsService(): Promise<ActionResponse<{ shops: any[] 
     return {
       success: false,
       error: "Une erreur est survenue lors de la récupération des magasins",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// ============================================================================
+// STOCK (bloc 3 — round de fermeture) : briques DB du stock et du scan.
+// Les actions ne touchent plus la base : tout vit ici, derrière les contrôleurs.
+// ============================================================================
+
+// Champs modifiables d'une ligne de stock (vue "Mon Stock" — niveau 3)
+export type StockItemUpdateInput = {
+  quantity?: number;
+  location?: string | null;
+  purchaseDate?: Date | null;
+  expiryDate?: Date | null;
+  lotNumber?: string | null;
+  price?: number | null;
+  notes?: string | null;
+  shopId?: string | null;
+};
+
+// Accès en écriture sur une installation (owner/editor) — null si autorisé
+async function assertStockWriteAccess(
+  installationId: string,
+  userId: string,
+  actionLabel: string
+): Promise<ActionResponse<void> | null> {
+  const access = await db.query.userInstallations.findFirst({
+    where: and(
+      eq(userInstallations.userId, userId),
+      eq(userInstallations.installationId, installationId)
+    ),
+  });
+
+  if (!access) {
+    return {
+      success: false,
+      error: "Accès refusé",
+      code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
+    };
+  }
+
+  if (access.role !== "owner" && access.role !== "editor") {
+    return {
+      success: false,
+      error: `Permission refusée : vous n'avez pas les droits pour ${actionLabel} cet objet`,
+      code: ErrorCodes.UNAUTHORIZED,
+    };
+  }
+
+  return null;
+}
+
+// Lister toutes les catégories
+export async function listCategoriesService(): Promise<
+  ActionResponse<{ categories: { id: string; name: string }[] }>
+> {
+  try {
+    const categoriesList = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+      })
+      .from(categories)
+      .orderBy(categories.name);
+
+    return {
+      success: true,
+      data: { categories: categoriesList },
+    };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la récupération des catégories:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la récupération des catégories",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Vérifier la présence d'un code-barres dans une installation (flux scan)
+export async function checkBarcodeInInstallationService(
+  installationId: string,
+  barcode: string
+): Promise<ActionResponse<{ found: boolean; quantity: number; objectId?: string }>> {
+  try {
+    const item = await findObjectInstallationByBarcodeService(installationId, barcode);
+    if (!item.success) {
+      return item as ActionResponse<{ found: boolean; quantity: number; objectId?: string }>;
+    }
+
+    if (item.data!.item) {
+      return {
+        success: true,
+        data: {
+          found: true,
+          quantity: item.data!.item.quantity,
+          objectId: item.data!.item.id,
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: { found: false, quantity: 0 },
+    };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la vérification du code-barres:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la vérification du code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Trouver la ligne de stock correspondant à un code-barres dans une installation
+export async function findObjectInstallationByBarcodeService(
+  installationId: string,
+  barcode: string
+): Promise<ActionResponse<{ item: { id: string; quantity: number } | null }>> {
+  try {
+    // inArray (jamais sql`… = ANY(…)` : le driver Neon HTTP éclate les tableaux
+    // interpolés en paramètres séparés → 22P02/42809 et stock silencieusement vide)
+    const obj = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.installationId, installationId),
+        inArray(
+          objectInstallation.objectDirectoryId,
+          db
+            .select({ id: barcodeDirectory.objectDirectoryId })
+            .from(barcodeDirectory)
+            .where(eq(barcodeDirectory.barcode, barcode))
+        )
+      ),
+      columns: { id: true, quantity: true },
+    });
+
+    return {
+      success: true,
+      data: { item: obj ?? null },
+    };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la recherche par code-barres:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la recherche par code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Trouver une ligne de stock par son ID (objectInstallationId)
+export async function findObjectInstallationByIdService(
+  objectInstallationId: string
+): Promise<
+  ActionResponse<{ item: { id: string; quantity: number; installationId: string } | null }>
+> {
+  try {
+    const obj = await db.query.objectInstallation.findFirst({
+      where: eq(objectInstallation.id, objectInstallationId),
+      columns: { id: true, quantity: true, installationId: true },
+    });
+
+    return {
+      success: true,
+      data: { item: obj ?? null },
+    };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la recherche de la ligne de stock:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la recherche de la ligne de stock",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Poser une quantité sur une ligne de stock.
+// À 0 ou moins, la ligne est supprimée (comportement historique du flux scan).
+export async function setObjectQuantityInInstallationService(
+  objectInstallationId: string,
+  newQuantity: number,
+  userId: string
+): Promise<ActionResponse<{ deleted: boolean }>> {
+  try {
+    if (newQuantity <= 0) {
+      const removeResult = await removeObjectFromInstallationService(
+        objectInstallationId,
+        userId
+      );
+      if (!removeResult.success) {
+        return removeResult as ActionResponse<{ deleted: boolean }>;
+      }
+      return { success: true, data: { deleted: true } };
+    }
+
+    await db
+      .update(objectInstallation)
+      .set({ quantity: newQuantity, updatedAt: new Date() })
+      .where(eq(objectInstallation.id, objectInstallationId));
+
+    return { success: true, data: { deleted: false } };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la mise à jour de la quantité:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue lors de la mise à jour de la quantité",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Mettre à jour une ligne de stock (vue "Mon Stock" — édition de sachet)
+export async function updateStockItemService(
+  installationId: string,
+  objectInstallationId: string,
+  input: StockItemUpdateInput,
+  userId: string
+): Promise<ActionResponse<void>> {
+  try {
+    const denied = await assertStockWriteAccess(installationId, userId, "modifier");
+    if (denied) {
+      return denied;
+    }
+
+    // La ligne doit appartenir à l'installation visée
+    const existingItem = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.id, objectInstallationId),
+        eq(objectInstallation.installationId, installationId)
+      ),
+      columns: { id: true },
+    });
+
+    if (!existingItem) {
+      return {
+        success: false,
+        error: "Objet non trouvé",
+        code: ErrorCodes.OBJECT_NOT_FOUND,
+      };
+    }
+
+    // Champs fournis uniquement (diff partiel, comme avant la délégation)
+    const updateData: Record<string, unknown> = {};
+    if (input.quantity !== undefined) updateData.quantity = input.quantity;
+    if (input.location !== undefined) updateData.location = input.location;
+    if (input.purchaseDate !== undefined) updateData.purchaseDate = input.purchaseDate;
+    if (input.expiryDate !== undefined) updateData.expiryDate = input.expiryDate;
+    if (input.lotNumber !== undefined) updateData.lotNumber = input.lotNumber;
+    if (input.price !== undefined) updateData.price = input.price;
+    if (input.notes !== undefined) updateData.note = input.notes;
+    if (input.shopId !== undefined) updateData.shopId = input.shopId;
+    updateData.updatedAt = new Date();
+
+    await db
+      .update(objectInstallation)
+      .set(updateData)
+      .where(eq(objectInstallation.id, objectInstallationId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la mise à jour de l'objet:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la mise à jour de l'objet",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Supprimer une ligne de stock (vue "Mon Stock")
+export async function deleteStockItemService(
+  installationId: string,
+  objectInstallationId: string,
+  userId: string
+): Promise<ActionResponse<void>> {
+  try {
+    const denied = await assertStockWriteAccess(installationId, userId, "supprimer");
+    if (denied) {
+      return denied;
+    }
+
+    const existingItem = await db.query.objectInstallation.findFirst({
+      where: and(
+        eq(objectInstallation.id, objectInstallationId),
+        eq(objectInstallation.installationId, installationId)
+      ),
+      columns: { id: true },
+    });
+
+    if (!existingItem) {
+      return {
+        success: false,
+        error: "Objet non trouvé",
+        code: ErrorCodes.OBJECT_NOT_FOUND,
+      };
+    }
+
+    await db
+      .delete(objectInstallation)
+      .where(eq(objectInstallation.id, objectInstallationId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("[ObjectService] Erreur lors de la suppression de l'objet:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la suppression de l'objet",
       code: ErrorCodes.INTERNAL_ERROR,
       details: error,
     };

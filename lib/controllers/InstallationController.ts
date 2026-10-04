@@ -1,5 +1,3 @@
-import { db } from "@/lib/db/drizzle";
-import { installations, userInstallations, users } from "@/lib/db/schema";
 import { ActionResponse, ErrorCodes } from "@/lib/types";
 import {
   CreateInstallationInput,
@@ -18,8 +16,11 @@ import {
   removeUserFromInstallationService,
   checkInstallationAccessService,
   getInstallationObjectsService, // ✅ Ajout de la nouvelle fonction
+  addMemberByEmailService,
+  removeMemberService,
 } from "@/lib/services/InstallationService";
-import { eq } from "drizzle-orm";
+// Round de fermeture (bloc 3) : ce contrôleur ne fait plus AUCUN accès DB.
+// La logique vit dans InstallationService.
 
 // ================
 // CONTRÔLEUR POUR LES INSTALLATIONS
@@ -56,22 +57,8 @@ export class InstallationController {
       };
     }
 
-    // Vérifier que l'utilisateur existe
-    const userExists = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, ownerId))
-      .limit(1);
-
-    if (!userExists.length) {
-      return {
-        success: false,
-        error: "Utilisateur non trouvé",
-        code: ErrorCodes.USER_NOT_FOUND,
-      };
-    }
-
-    // Appel au service
+    // Appel au service — l'existence du propriétaire est vérifiée dans
+    // le service (round de fermeture : zéro DB côté contrôleur)
     return createInstallationService(input, ownerId);
   }
 
@@ -97,22 +84,8 @@ export class InstallationController {
       };
     }
 
-    // Vérifier que l'utilisateur existe
-    const userExists = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!userExists.length) {
-      return {
-        success: false,
-        error: "Utilisateur non trouvé",
-        code: ErrorCodes.USER_NOT_FOUND,
-      };
-    }
-
-    // Appel au service
+    // Appel au service — l'existence de l'utilisateur est vérifiée dans
+    // le service (round de fermeture : zéro DB côté contrôleur)
     return getUserInstallationsService(userId);
   }
 
@@ -478,69 +451,15 @@ export class InstallationController {
       };
     }
 
-    // Vérifier que le demandeur est le propriétaire de l'installation
-    const installation = await db
-      .select()
-      .from(installations)
-      .where(eq(installations.id, installationId))
-      .limit(1);
-
-    if (!installation.length) {
-      return {
-        success: false,
-        error: "Installation non trouvée",
-        code: ErrorCodes.NOT_FOUND,
-      };
-    }
-
-    // Vérifier que le demandeur est bien le propriétaire
-    if (installation[0].ownerId !== requesterId) {
-      return {
-        success: false,
-        error: "Seul le propriétaire peut ajouter des membres",
-        code: ErrorCodes.UNAUTHORIZED,
-      };
-    }
-
-    // Trouver l'utilisateur par email
-    const targetUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, userEmail))
-      .limit(1);
-
-    if (!targetUser.length) {
-      return {
-        success: false,
-        error: "Utilisateur non trouvé",
-        code: ErrorCodes.NOT_FOUND,
-      };
-    }
-
-    // Vérifier que l'utilisateur n'est pas déjà membre de cette installation
-    const existingMember = await db
-      .select()
-      .from(userInstallations)
-      .where(
-        eq(userInstallations.installationId, installationId) &&
-        eq(userInstallations.userId, targetUser[0].id)
-      )
-      .limit(1);
-
-    if (existingMember.length) {
-      return {
-        success: false,
-        error: "Cet utilisateur est déjà membre de cette installation",
-        code: ErrorCodes.CONFLICT,
-      };
-    }
-
-    // Ajouter le membre
-    return addUserToInstallationService({
+    // Logique métier dans le service (round de fermeture : zéro DB ici).
+    // Au passage, le service utilise and() SQL — l'ancien `eq(...) && eq(...)`
+    // ne testait en réalité que la dernière condition.
+    return addMemberByEmailService(
       installationId,
-      userId: targetUser[0].id,
-      role: role as "owner" | "editor" | "viewer",
-    });
+      requesterId,
+      userEmail,
+      role as "owner" | "editor" | "viewer"
+    );
   }
 
   // Supprimer un membre d'une installation
@@ -558,51 +477,9 @@ export class InstallationController {
       };
     }
 
-    // Vérifier que le demandeur est le propriétaire de l'installation
-    const installation = await db
-      .select()
-      .from(installations)
-      .where(eq(installations.id, installationId))
-      .limit(1);
-
-    if (!installation.length) {
-      return {
-        success: false,
-        error: "Installation non trouvée",
-        code: ErrorCodes.NOT_FOUND,
-      };
-    }
-
-    // Vérifier que le demandeur est bien le propriétaire
-    if (installation[0].ownerId !== requesterId) {
-      return {
-        success: false,
-        error: "Seul le propriétaire peut supprimer des membres",
-        code: ErrorCodes.UNAUTHORIZED,
-      };
-    }
-
-    // Vérifier que le membre existe
-    const member = await db
-      .select()
-      .from(userInstallations)
-      .where(
-        eq(userInstallations.installationId, installationId) &&
-        eq(userInstallations.userId, userId)
-      )
-      .limit(1);
-
-    if (!member.length) {
-      return {
-        success: false,
-        error: "Membre non trouvé dans cette installation",
-        code: ErrorCodes.NOT_FOUND,
-      };
-    }
-
-    // Supprimer le membre
-    return removeUserFromInstallationService(
-      { installationId, userId }
-    );
+    // Logique métier dans le service (round de fermeture : zéro DB ici).
+    // and() SQL dans le service — l'ancien `eq(...) && eq(...)` ne testait
+    // que la dernière condition.
+    return removeMemberService(installationId, requesterId, userId);
   }
 }

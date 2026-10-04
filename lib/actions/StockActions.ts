@@ -2,23 +2,14 @@
 // ACTIONS POUR LA FONCTIONNALITÉ "MON STOCK"
 // Vue générique (bloc 3) : les actions valident
 // la session et délèguent aux services — zéro
-// requête ici pour la lecture. update/delete
-// conservent leurs accès directs en attendant le
-// round de fermeture du bloc (délégation prévue
-// à ObjectService — voir PROJET.md §5).
+// requête ici, en lecture comme en écriture
+// (round de fermeture du bloc 3).
 // ============================================
 
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
-import { db } from "@/lib/db/drizzle";
-import {
-  objectInstallation,
-  userInstallations
-} from "@/lib/db/schema";
-import {
-  eq,
-  and
-} from "drizzle-orm";
+import { ObjectController } from "@/lib/controllers/ObjectController";
+import type { StockItemUpdateInput } from "@/lib/services/ObjectService";
 import { StockResponse } from "@/lib/types/stockTypes";
 import { ErrorCodes } from "@/lib/types";
 import {
@@ -236,21 +227,12 @@ export async function getInstallationDirectoryCard(
 export async function updateStockItem(
   installationId: string,
   objectInstallationId: string,
-  input: {
-    quantity?: number;
-    location?: string | null;
-    purchaseDate?: Date | null;
-    expiryDate?: Date | null;
-    lotNumber?: string | null;
-    price?: number | null;
-    notes?: string | null;
-    shopId?: string | null;
-  }
+  input: StockItemUpdateInput
 ): Promise<StockResponse> {
   try {
     const headers = await getAuthHeaders();
     const session = await auth.api.getSession({ headers });
-    
+
     if (!session?.user) {
       return {
         success: false,
@@ -259,69 +241,14 @@ export async function updateStockItem(
       };
     }
 
-    // Vérifier l'accès en écriture
-    const accessResult = await db.query.userInstallations.findFirst({
-      where: and(
-        eq(userInstallations.userId, session.user.id),
-        eq(userInstallations.installationId, installationId)
-      ),
-    });
-    
-    if (!accessResult) {
-      return {
-        success: false,
-        error: "Accès refusé",
-        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
-      };
-    }
-    
-    if (accessResult.role !== 'owner' && accessResult.role !== 'editor') {
-      return {
-        success: false,
-        error: "Permission refusée : vous n'avez pas les droits pour modifier cet objet",
-        code: ErrorCodes.UNAUTHORIZED,
-      };
-    }
-
-    // Vérifier que l'objet appartient bien à l'installation
-    const existingItem = await db.query.objectInstallation.findFirst({
-      where: and(
-        eq(objectInstallation.id, objectInstallationId),
-        eq(objectInstallation.installationId, installationId)
-      ),
-    });
-    
-    if (!existingItem) {
-      return {
-        success: false,
-        error: "Objet non trouvé",
-        code: ErrorCodes.OBJECT_NOT_FOUND,
-      };
-    }
-
-    // Construire l'update
-    const updateData: Record<string, unknown> = {};
-    
-    if (input.quantity !== undefined) updateData.quantity = input.quantity;
-    if (input.location !== undefined) updateData.location = input.location;
-    if (input.purchaseDate !== undefined) updateData.purchaseDate = input.purchaseDate;
-    if (input.expiryDate !== undefined) updateData.expiryDate = input.expiryDate;
-    if (input.lotNumber !== undefined) updateData.lotNumber = input.lotNumber;
-    if (input.price !== undefined) updateData.price = input.price;
-    if (input.notes !== undefined) updateData.note = input.notes;
-    if (input.shopId !== undefined) updateData.shopId = input.shopId;
-    
-    updateData.updatedAt = new Date();
-
-    // Exécuter la mise à jour
-    await db
-      .update(objectInstallation)
-      .set(updateData)
-      .where(eq(objectInstallation.id, objectInstallationId));
-
-    return {
-      success: true,
-    };
+    // Round de fermeture : accès, permissions et requête vivent dans
+    // ObjectService, derrière ObjectController — zéro DB côté action
+    return await ObjectController.updateStockItem(
+      installationId,
+      objectInstallationId,
+      session.user.id,
+      input
+    );
   } catch (error) {
     console.error("[StockActions] Erreur dans updateStockItem:", error);
     return {
@@ -342,7 +269,7 @@ export async function deleteStockItem(
   try {
     const headers = await getAuthHeaders();
     const session = await auth.api.getSession({ headers });
-    
+
     if (!session?.user) {
       return {
         success: false,
@@ -351,54 +278,13 @@ export async function deleteStockItem(
       };
     }
 
-    // Vérifier l'accès en écriture
-    const accessResult = await db.query.userInstallations.findFirst({
-      where: and(
-        eq(userInstallations.userId, session.user.id),
-        eq(userInstallations.installationId, installationId)
-      ),
-    });
-    
-    if (!accessResult) {
-      return {
-        success: false,
-        error: "Accès refusé",
-        code: ErrorCodes.INSTALLATION_ACCESS_DENIED,
-      };
-    }
-    
-    if (accessResult.role !== 'owner' && accessResult.role !== 'editor') {
-      return {
-        success: false,
-        error: "Permission refusée : vous n'avez pas les droits pour supprimer cet objet",
-        code: ErrorCodes.UNAUTHORIZED,
-      };
-    }
-
-    // Vérifier que l'objet appartient bien à l'installation
-    const existingItem = await db.query.objectInstallation.findFirst({
-      where: and(
-        eq(objectInstallation.id, objectInstallationId),
-        eq(objectInstallation.installationId, installationId)
-      ),
-    });
-    
-    if (!existingItem) {
-      return {
-        success: false,
-        error: "Objet non trouvé",
-        code: ErrorCodes.OBJECT_NOT_FOUND,
-      };
-    }
-
-    // Supprimer l'objet
-    await db
-      .delete(objectInstallation)
-      .where(eq(objectInstallation.id, objectInstallationId));
-
-    return {
-      success: true,
-    };
+    // Round de fermeture : accès, permissions et requête vivent dans
+    // ObjectService, derrière ObjectController — zéro DB côté action
+    return await ObjectController.deleteStockItem(
+      installationId,
+      objectInstallationId,
+      session.user.id
+    );
   } catch (error) {
     console.error("[StockActions] Erreur dans deleteStockItem:", error);
     return {

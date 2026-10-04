@@ -991,9 +991,8 @@ export async function listShops(): Promise<ActionResponse<any>> {
 
 import { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import { searchProductInDirectory } from "@/lib/services/DirectoryService";
-import { db } from "@/lib/db/drizzle";
-import { objectInstallation, installations, userInstallations, users, objectDirectory, barcodeDirectory } from "@/lib/db/schema";
-import { and, eq, desc, inArray } from "drizzle-orm";
+// Round de fermeture (bloc 3) : cette section ne fait plus aucun accès DB.
+// Les requêtes vivent dans ObjectService, derrière ObjectController.
 
 /**
  * Vérifie si un code-barres existe dans une installation spécifique
@@ -1029,40 +1028,9 @@ export async function checkBarcodeInInstallation(
       };
     }
 
-    // Chercher l'objet dans l'installation via le code-barres (jointure nécessaire)
-    const obj = await db.query.objectInstallation.findFirst({
-      where: and(
-        eq(objectInstallation.installationId, installationId),
-        inArray(objectInstallation.objectDirectoryId, 
-          db.select({ id: barcodeDirectory.objectDirectoryId })
-            .from(barcodeDirectory)
-            .where(eq(barcodeDirectory.barcode, barcode))
-        )
-      ),
-      columns: { id: true, quantity: true },
-      with: {
-        objectDirectory: true,
-      },
-    });
-
-    if (obj) {
-      return {
-        success: true,
-        data: {
-          found: true,
-          quantity: obj.quantity,
-          objectId: obj.id,
-        },
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        found: false,
-        quantity: 0,
-      },
-    };
+    // La requête (jointure code-barres → installation) vit dans
+    // ObjectService — round de fermeture : zéro DB côté action
+    return await ObjectController.checkBarcodeInInstallation(installationId, barcode);
   } catch (error) {
     console.error("[ObjectActions] Erreur checkBarcodeInInstallation:", error);
     return {
@@ -1295,19 +1263,16 @@ export async function updateObjectQuantityInInstallation(
       };
     }
 
-    // Trouver l'objet dans l'installation (jointure nécessaire pour barcode)
-    const obj = await db.query.objectInstallation.findFirst({
-      where: and(
-        eq(objectInstallation.installationId, installationId),
-        inArray(objectInstallation.objectDirectoryId, 
-          db.select({ id: barcodeDirectory.objectDirectoryId })
-            .from(barcodeDirectory)
-            .where(eq(barcodeDirectory.barcode, barcode))
-        )
-      ),
-      columns: { id: true, quantity: true },
-    });
+    // Trouver la ligne de stock via le code-barres — ObjectService
+    const findResult = await ObjectController.findObjectInstallationByBarcode(
+      installationId,
+      barcode
+    );
+    if (!findResult.success) {
+      return findResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
+    }
 
+    const obj = findResult.data!.item;
     if (!obj) {
       return {
         success: false,
@@ -1318,30 +1283,16 @@ export async function updateObjectQuantityInInstallation(
 
     const previousQuantity = obj.quantity;
 
-    // Si newQuantity <= 0, supprimer l'objet
-    if (newQuantity <= 0) {
-      const removeResult = await removeObjectFromInstallation(obj.id);
-      if (!removeResult.success) {
-        return removeResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
-      }
-
-      return {
-        success: true,
-        data: {
-          objectId: obj.id,
-          previousQuantity,
-        },
-      };
+    // Poser la quantité (la ligne est supprimée si elle passe à 0 ou
+    // moins) — service, zéro DB côté action
+    const setResult = await ObjectController.setObjectQuantityInInstallation(
+      obj.id,
+      newQuantity,
+      session.user.id
+    );
+    if (!setResult.success) {
+      return setResult as ActionResponse<{ objectId: string; previousQuantity: number }>;
     }
-
-    // Mettre à jour la quantité
-    await db
-      .update(objectInstallation)
-      .set({
-        quantity: newQuantity,
-        updatedAt: new Date(),
-      })
-      .where(eq(objectInstallation.id, obj.id));
 
     return {
       success: true,
@@ -1394,19 +1345,16 @@ export async function adjustObjectQuantity(
       };
     }
 
-    // Trouver l'objet dans l'installation (jointure nécessaire pour barcode)
-    const obj = await db.query.objectInstallation.findFirst({
-      where: and(
-        eq(objectInstallation.installationId, installationId),
-        inArray(objectInstallation.objectDirectoryId, 
-          db.select({ id: barcodeDirectory.objectDirectoryId })
-            .from(barcodeDirectory)
-            .where(eq(barcodeDirectory.barcode, barcode))
-        )
-      ),
-      columns: { id: true, quantity: true },
-    });
+    // Trouver la ligne de stock via le code-barres — ObjectService
+    const findResult = await ObjectController.findObjectInstallationByBarcode(
+      installationId,
+      barcode
+    );
+    if (!findResult.success) {
+      return findResult as ActionResponse<{ objectId: string; newQuantity: number }>;
+    }
 
+    const obj = findResult.data!.item;
     if (!obj) {
       return {
         success: false,
@@ -1415,38 +1363,23 @@ export async function adjustObjectQuantity(
       };
     }
 
+    // Ajustement, puis pose de la quantité (la ligne est supprimée si
+    // elle passe à 0 ou moins) — service, zéro DB côté action
     const newQuantity = obj.quantity + adjustment;
-
-    // Si la quantité passe à 0 ou en dessous, supprimer l'objet
-    if (newQuantity <= 0) {
-      const removeResult = await removeObjectFromInstallation(obj.id);
-      if (!removeResult.success) {
-        return removeResult as ActionResponse<{ objectId: string; newQuantity: number }>;
-      }
-
-      return {
-        success: true,
-        data: {
-          objectId: obj.id,
-          newQuantity: 0,
-        },
-      };
+    const setResult = await ObjectController.setObjectQuantityInInstallation(
+      obj.id,
+      newQuantity,
+      session.user.id
+    );
+    if (!setResult.success) {
+      return setResult as ActionResponse<{ objectId: string; newQuantity: number }>;
     }
-
-    // Mettre à jour la quantité
-    await db
-      .update(objectInstallation)
-      .set({
-        quantity: newQuantity,
-        updatedAt: new Date(),
-      })
-      .where(eq(objectInstallation.id, obj.id));
 
     return {
       success: true,
       data: {
         objectId: obj.id,
-        newQuantity,
+        newQuantity: setResult.data!.deleted ? 0 : newQuantity,
       },
     };
   } catch (error) {
@@ -1479,12 +1412,15 @@ export async function adjustObjectQuantityByInstallationId(
       };
     }
 
-    // Vérifier que l'objet appartient à une installation accessible
-    const obj = await db.query.objectInstallation.findFirst({
-      where: eq(objectInstallation.id, objectInstallationId),
-      columns: { id: true, quantity: true, installationId: true },
-    });
+    // Trouver la ligne de stock par son ID — ObjectService
+    const findResult = await ObjectController.findObjectInstallationById(
+      objectInstallationId
+    );
+    if (!findResult.success) {
+      return findResult as ActionResponse<{ newQuantity: number }>;
+    }
 
+    const obj = findResult.data!.item;
     if (!obj) {
       return {
         success: false,
@@ -1507,36 +1443,22 @@ export async function adjustObjectQuantityByInstallationId(
       };
     }
 
+    // Ajustement, puis pose de la quantité (la ligne est supprimée si
+    // elle passe à 0 ou moins) — service, zéro DB côté action
     const newQuantity = obj.quantity + adjustment;
-
-    // Si la quantité passe à 0 ou en dessous, supprimer l'objet
-    if (newQuantity <= 0) {
-      const removeResult = await removeObjectFromInstallation(objectInstallationId);
-      if (!removeResult.success) {
-        return removeResult as ActionResponse<{ newQuantity: number }>;
-      }
-
-      return {
-        success: true,
-        data: {
-          newQuantity: 0,
-        },
-      };
+    const setResult = await ObjectController.setObjectQuantityInInstallation(
+      objectInstallationId,
+      newQuantity,
+      session.user.id
+    );
+    if (!setResult.success) {
+      return setResult as ActionResponse<{ newQuantity: number }>;
     }
-
-    // Mettre à jour la quantité
-    await db
-      .update(objectInstallation)
-      .set({
-        quantity: newQuantity,
-        updatedAt: new Date(),
-      })
-      .where(eq(objectInstallation.id, objectInstallationId));
 
     return {
       success: true,
       data: {
-        newQuantity,
+        newQuantity: setResult.data!.deleted ? 0 : newQuantity,
       },
     };
   } catch (error) {
