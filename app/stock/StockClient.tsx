@@ -13,7 +13,7 @@
 // et la suppression vivent au niveau 3.
 // ============================================
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import { Warehouse, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import type { GenericStockCard } from "@/lib/services/StockViewService";
@@ -43,6 +43,9 @@ interface StockClientProps {
   installationId?: string;
   installationName?: string;
   forceCardView?: boolean; // Force l'affichage en cartes (ex: pour la page /stock)
+  // Emplacement réservé dans le header (ex: l'outil « Fusionner deux
+  // fiches » du bloc 4 R5, monté par la page /stock seule).
+  headerExtra?: ReactNode;
 }
 
 // --------------------------------------------
@@ -77,6 +80,7 @@ export default function StockClient({
   installationId,
   installationName,
   forceCardView = false,
+  headerExtra,
 }: StockClientProps) {
   const [cards, setCards] = useState<GenericStockCard[]>(initialData?.cards || []);
   const [stats, setStats] = useState<GenericStockStats | null>(initialData?.stats || null);
@@ -197,6 +201,7 @@ export default function StockClient({
               : "Tous vos produits dans toutes vos installations"}
           </p>
         </div>
+        {headerExtra}
         {installationId && (
           <Link
             href={`/installations/${installationId}/objects/scan`}

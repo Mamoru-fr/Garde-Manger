@@ -6,6 +6,7 @@ import {
 } from "@/lib/services/StockViewService";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
+import AnnuaireMergeTool from "@/components/stock/AnnuaireMergeTool";
 import StockClient from "./StockClient";
 
 // ============================================
@@ -42,6 +43,7 @@ export default async function GlobalStockPage() {
         categories: uniqueCategoriesFromCards(cards),
       }}
       forceCardView
+      headerExtra={<AnnuaireMergeTool />}
     />
   );
 }
