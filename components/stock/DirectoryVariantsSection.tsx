@@ -1,7 +1,7 @@
 "use client";
 
 // ============================================
-// LA SECTION « VOIR LES DIFFÉRENTS X » (bloc 4, round 2)
+// LA SECTION « VOIR LES DIFFÉRENTS X » (bloc 4, rounds 2-3)
 // Modèle générique/poids — spec §2.2 (Q1a : section repliable
 // sur la page niveau 2, décision Alexis 04/10)
 //
@@ -18,17 +18,22 @@
 //
 // Décisions gravées :
 // - Q2b : chaque ligne est un LIEN vers la page fiche détail
-//   dédiée (fondation posée ce round) ;
-// - Q3a : le bouton « réaffilier » sur chaque ligne vient au
-//   round 3 — pas ici.
+//   dédiée (fondation posée au round 2) ;
+// - Q3a (round 3) : le bouton « réaffilier » sur chaque ligne
+//   ouvre la modale de choix de générique (ReassignVariantModal)
+//   — le geste de la fusion manuelle des doublons d'Alexis ;
+//   un déplacement réussi RECHARGE la liste : la variante
+//   déménagée quitte ce générique, sa disparition EST le
+//   feedback (plus un bandeau de succès discret).
 // ============================================
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Tags, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Tags, Loader2, ArrowLeftRight } from "lucide-react";
 
 import { getDirectoryVariants } from "@/lib/actions/VariantActions";
 import type { VariantLine } from "@/lib/services/VariantViewService";
+import ReassignVariantModal from "./ReassignVariantModal";
 import styles from "./DirectoryVariantsSection.module.css";
 
 interface DirectoryVariantsSectionProps {
@@ -54,22 +59,17 @@ export default function DirectoryVariantsSection({
   const [variants, setVariants] = useState<VariantLine[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Q3a : la variante dont on demande la réaffiliation + le
+  // bandeau de succès après un déménagement.
+  const [reassignTarget, setReassignTarget] = useState<VariantLine | null>(
+    null
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleToggle = async () => {
-    // Replier : simple, sans rechargement au retour.
-    if (isOpen) {
-      setIsOpen(false);
-      return;
-    }
-
-    setIsOpen(true);
-
-    // Fainéant : ne charge qu'au PREMIER dépliage (et garde le
-    // résultat — les repliages suivants sont gratuits).
-    if (variants !== null || isLoading) {
-      return;
-    }
-
+  // Le chargement de la liste — partagé par le premier dépliage
+  // et le rechargement après réaffiliation (une vérité, deux portes).
+  const loadVariants = async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -96,6 +96,46 @@ export default function DirectoryVariantsSection({
     }
   };
 
+  const handleToggle = async () => {
+    // Replier : simple, sans rechargement au retour.
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+
+    setIsOpen(true);
+
+    // Fainéant : ne charge qu'au PREMIER dépliage (et garde le
+    // résultat — les repliages suivants sont gratuits).
+    if (variants !== null || isLoading) {
+      return;
+    }
+
+    await loadVariants();
+  };
+
+  // Q3a : ouvrir la modale pour cette ligne.
+  const handleOpenReassign = (variant: VariantLine) => {
+    setReassignTarget(variant);
+    setSuccessMessage(null);
+    setIsModalOpen(true);
+  };
+
+  // Le déménagement a réussi : la modale s'est refermée, on
+  // recharge la liste (la variante a quitté ce générique) et
+  // on le dit — la disparition seule serait muette.
+  const handleReassigned = async () => {
+    const movedLabel = reassignTarget ? reassignTarget.brandLabel : null;
+    setIsModalOpen(false);
+    setReassignTarget(null);
+    setSuccessMessage(
+      movedLabel
+        ? `« ${movedLabel} » a été déplacé vers un autre générique.`
+        : "Variante déplacée vers un autre générique."
+    );
+    await loadVariants();
+  };
+
   return (
     <section className={styles.variantsCard}>
       {/* Le bouton repliable — le libellé de la spec (Q1a) */}
@@ -118,6 +158,10 @@ export default function DirectoryVariantsSection({
 
       {isOpen && (
         <div className={styles.content}>
+          {successMessage && (
+            <p className={styles.success}>{successMessage}</p>
+          )}
+
           {isLoading && (
             <p className={styles.state}>
               <Loader2 size={16} className={styles.spinner} />
@@ -136,8 +180,8 @@ export default function DirectoryVariantsSection({
           {!isLoading && !error && variants !== null && variants.length > 0 && (
             <ul className={styles.variantList}>
               {variants.map((variant) => (
-                <li key={variant.id}>
-                  {/* Q2b : la ligne EST le lien vers la fiche détail. */}
+                <li key={variant.id} className={styles.variantItem}>
+                  {/* Q2b : la marque EST le lien vers la fiche détail. */}
                   <Link
                     href={`/stock/${directoryId}/variantes/${variant.id}`}
                     className={styles.variantLink}
@@ -162,15 +206,38 @@ export default function DirectoryVariantsSection({
                           Pas de Nutri-Score
                         </span>
                       )}
-                      <ChevronRight size={14} />
                     </span>
                   </Link>
+                  {/* Q3a : le bouton « réaffilier » — la fusion
+                      manuelle des doublons d'Alexis. */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenReassign(variant)}
+                    className={styles.reassignButton}
+                    title={`Réaffilier « ${variant.brandLabel} » vers un autre générique`}
+                  >
+                    <ArrowLeftRight size={14} />
+                    <span>Réaffilier</span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
       )}
+
+      {/* La modale de choix de générique (Q3a) — rendue à la
+          demande, fermée par défaut. */}
+      <ReassignVariantModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setReassignTarget(null);
+        }}
+        variant={reassignTarget}
+        currentDirectoryId={directoryId}
+        onReassigned={handleReassigned}
+      />
     </section>
   );
 }

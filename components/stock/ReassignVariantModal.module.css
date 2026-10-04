@@ -1,0 +1,98 @@
+/* ============================================
+   MODALE « RÉAFFILIER » (bloc 4, round 3 — Q3a)
+   Palette café du chantier : fond #fdf6e8, brun
+   #4a2c14 → #8b4513, cartes blanches, radius 12.
+   ============================================ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.help {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #7a6a58;
+  line-height: 1.4;
+}
+
+.state {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #7a6a58;
+}
+
+.error {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #b3261e;
+}
+
+.resultList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #f0e6d8;
+  border-radius: 8px;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0e6d8;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.resultList li:last-child .resultItem {
+  border-bottom: none;
+}
+
+.resultItem:hover {
+  background: #fdf6e8;
+}
+
+.resultItemSelected {
+  background: #fdf6e8;
+}
+
+.resultName {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #2c1a0e;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.resultBrand {
+  font-size: 0.8rem;
+  color: #7a6a58;
+  flex-shrink: 0;
+}
+
+.resultCheck {
+  color: #038141;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
