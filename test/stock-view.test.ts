@@ -21,6 +21,8 @@ import {
 import {
   StockRowInput,
   buildGenericCards,
+  uniqueInstallationsFromCards,
+  uniqueCategoriesFromCards,
 } from "../lib/services/StockViewService";
 
 // ---- Les unités du seed, en mémoire (§3.1 de la spec) ----
@@ -274,5 +276,61 @@ describe("buildGenericCards — la fiche générique (bloc 3)", () => {
     expect(byId.get("l2")?.quantityLabel).toBe("3 unités");
     // Les unités de mesure ne prennent jamais le pluriel : « 2 kg », pas « 2 kgs ».
     expect(byId.get("l3")?.quantityLabel).toBe("2 kg");
+  });
+});
+
+// ============================================
+// Helpers du niveau 1 (round 3) — dérivation
+// des installations et catégories à partir des
+// cartes, pour la barre de filtres côté page
+// (SSR) comme côté client (après fetch API).
+// ============================================
+describe("helpers de la vue niveau 1 — installations et catégories uniques", () => {
+  const cards = buildGenericCards(
+    [
+      makeRow({
+        id: "l1",
+        installationId: "inst-1",
+        installationName: "Cuisine",
+      }),
+      makeRow({
+        id: "l2",
+        installationId: "inst-2",
+        installationName: "Cave",
+      }),
+      makeRow({
+        id: "l3",
+        installationId: "inst-1",
+        installationName: "Cuisine",
+      }),
+      makeRow({
+        id: "l4",
+        directoryId: "gen-huile",
+        directoryName: "Huile d'olive",
+        categoryId: null,
+        unitFamily: "volume",
+      }),
+    ],
+    units,
+    noPrefs,
+    legacyUnit
+  );
+
+  it("uniqueInstallationsFromCards déduit les installations sans doublon, ordre de première apparition", () => {
+    const installations = uniqueInstallationsFromCards(cards);
+    expect(installations).toEqual([
+      { id: "inst-1", name: "Cuisine" },
+      { id: "inst-2", name: "Cave" },
+    ]);
+  });
+
+  it("uniqueCategoriesFromCards déduit les catégories uniques et ignore les fiches sans catégorie", () => {
+    const categories = uniqueCategoriesFromCards(cards);
+    expect(categories).toEqual([{ id: "epicerie", name: "epicerie" }]);
+  });
+
+  it("sur un stock vide, les deux dérivations renvoient des listes vides", () => {
+    expect(uniqueInstallationsFromCards([])).toEqual([]);
+    expect(uniqueCategoriesFromCards([])).toEqual([]);
   });
 });
