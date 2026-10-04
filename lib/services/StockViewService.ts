@@ -283,6 +283,94 @@ export function uniqueCategoriesFromCards(
 }
 
 // --------------------------------------------
+// Niveau 2 de la pyramide (décision Alexis 04/10) — l'encadré
+// « quantité par installation » de la fiche générique globale :
+// une ligne par installation porteuse, quantité dans l'installation,
+// péremption la plus proche de l'installation.
+//
+// Pur, comme tout ce fichier : la carte arrive construite par
+// buildGenericCards, on n'y redit que ce que la fiche globale ne
+// dit pas — le détail PAR installation. Le piège de l'agrégat
+// s'applique ici aussi : la quantité d'une installation ne se
+// déduit JAMAIS du global, elle se calcule sur SES lignes seules.
+// --------------------------------------------
+
+// Une ligne de l'encadré « quantité par installation ».
+export interface InstallationBreakdownEntry {
+  installationId: string;
+  installationName: string;
+  // L'agrégat local formaté (§3.3 + §4) : les saisies de cette
+  // installation uniquement — jamais une part du global.
+  quantityLabel: string;
+  // La péremption la plus proche PARMI les lignes de l'installation.
+  nearestExpiryDate: Date | null;
+  linesCount: number;
+  // L'installation est éditable si une de ses lignes l'est.
+  hasEditPermission: boolean;
+}
+
+export function buildInstallationBreakdown(
+  card: GenericStockCard,
+  unitsById: Record<string, QuantityUnit>,
+  preferences: DisplayPreferences,
+  legacyUnit: QuantityUnit
+): InstallationBreakdownEntry[] {
+  const entries: InstallationBreakdownEntry[] = [];
+
+  // Ordre de première apparition de la fiche (card.installations).
+  for (const installation of card.installations) {
+    const lines = card.lines.filter(
+      (line) => line.installationId === installation.id
+    );
+    if (lines.length === 0) {
+      continue; // défensif : une installation porteuse a toujours des lignes
+    }
+
+    // Les entrées d'ajustement de CETTE installation (§3.2) : la saisie
+    // moderne si elle existe, sinon l'entier legacy projeté en discret
+    // (§3.3.4) — la même règle que buildGenericCards, zéro divergence.
+    const quantityEntries: QuantityEntry[] = [];
+    for (const line of lines) {
+      if (line.quantityValue != null && line.quantityUnitId != null) {
+        quantityEntries.push({
+          value: line.quantityValue,
+          unitId: line.quantityUnitId,
+          equivalentValue: line.equivalentValue,
+          equivalentUnitId: line.equivalentUnitId,
+        });
+      } else if (line.quantity > 0) {
+        quantityEntries.push({ value: line.quantity, unitId: legacyUnit.id });
+      }
+    }
+
+    const aggregation = aggregateQuantities(quantityEntries, unitsById);
+    const quantityLabel = formatAggregation(aggregation, unitsById, preferences);
+
+    // La péremption de l'installation = la plus proche de SES lignes
+    // (card.lines est triée péremption croissante, sans-date en fin —
+    // la première ligne datée de l'installation porte la réponse).
+    let nearestExpiryDate: Date | null = null;
+    for (const line of lines) {
+      if (line.expiryDate) {
+        nearestExpiryDate = line.expiryDate;
+        break;
+      }
+    }
+
+    entries.push({
+      installationId: installation.id,
+      installationName: installation.name,
+      quantityLabel,
+      nearestExpiryDate,
+      linesCount: lines.length,
+      hasEditPermission: lines.some((line) => line.hasEditPermission),
+    });
+  }
+
+  return entries;
+}
+
+// --------------------------------------------
 // Helpers de péremption — calculs de vue, purs.
 // (Déplacés depuis StockActions le 03/10 : les calculs de vue de stock
 // vivent dans le service, les actions délèguent — règle des couches.)

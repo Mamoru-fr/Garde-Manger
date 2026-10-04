@@ -23,6 +23,7 @@ import {
   buildGenericCards,
   uniqueInstallationsFromCards,
   uniqueCategoriesFromCards,
+  buildInstallationBreakdown,
 } from "../lib/services/StockViewService";
 
 // ---- Les unités du seed, en mémoire (§3.1 de la spec) ----
@@ -332,5 +333,86 @@ describe("helpers de la vue niveau 1 — installations et catégories uniques", 
   it("sur un stock vide, les deux dérivations renvoient des listes vides", () => {
     expect(uniqueInstallationsFromCards([])).toEqual([]);
     expect(uniqueCategoriesFromCards([])).toEqual([]);
+  });
+});
+
+// ============================================
+// buildInstallationBreakdown — l'encadré « quantité
+// par installation » de la fiche générique globale
+// (niveau 2 de la pyramide, décision Alexis 04/10 :
+// une ligne par installation : quantité dans
+// l'installation, péremption la plus proche).
+// ============================================
+describe("buildInstallationBreakdown — la quantité par installation (niveau 2)", () => {
+  const card = buildGenericCards(
+    [
+      // Cuisine : 500 g + 500 g modernes → 1000 g, deux dates, éditable.
+      makeRow({
+        id: "l1",
+        installationId: "inst-1",
+        installationName: "Cuisine",
+        quantityValue: 500,
+        quantityUnitId: "g",
+        expiryDate: new Date("2026-10-10T00:00:00Z"),
+      }),
+      makeRow({
+        id: "l2",
+        installationId: "inst-1",
+        installationName: "Cuisine",
+        quantityValue: 500,
+        quantityUnitId: "g",
+        expiryDate: new Date("2026-11-01T00:00:00Z"),
+      }),
+      // Cave : legacy 2 unités, sans date, viewer.
+      makeRow({
+        id: "l3",
+        installationId: "inst-2",
+        installationName: "Cave",
+        quantity: 2,
+        hasEditPermission: false,
+      }),
+    ],
+    units,
+    noPrefs,
+    legacyUnit
+  )[0];
+
+  it("une ligne par installation porteuse, dans l'ordre d'apparition de la fiche", () => {
+    const breakdown = buildInstallationBreakdown(card, units, noPrefs, legacyUnit);
+    expect(breakdown.map((b) => b.installationName)).toEqual(["Cuisine", "Cave"]);
+  });
+
+  it("l'agrégat local ne compte que les lignes de CETTE installation (jamais le global)", () => {
+    const breakdown = buildInstallationBreakdown(card, units, noPrefs, legacyUnit);
+    expect(breakdown[0].quantityLabel).toBe("1000 g");
+    expect(breakdown[1].quantityLabel).toBe("2 unités");
+  });
+
+  it("respecte la préférence d'affichage par famille (§4.2) dans l'agrégat local", () => {
+    const breakdown = buildInstallationBreakdown(card, units, { ...noPrefs, masse: "kg" } as DisplayPreferences, legacyUnit);
+    expect(breakdown[0].quantityLabel).toBe("1 kg");
+  });
+
+  it("la péremption la plus proche de l'installation, null si aucune ligne datée", () => {
+    const breakdown = buildInstallationBreakdown(card, units, noPrefs, legacyUnit);
+    expect(breakdown[0].nearestExpiryDate?.getTime()).toBe(
+      new Date("2026-10-10T00:00:00Z").getTime()
+    );
+    expect(breakdown[1].nearestExpiryDate).toBeNull();
+  });
+
+  it("compte les lignes et l'installation est éditable si une de ses lignes l'est", () => {
+    const breakdown = buildInstallationBreakdown(card, units, noPrefs, legacyUnit);
+    expect(breakdown[0].linesCount).toBe(2);
+    expect(breakdown[0].hasEditPermission).toBe(true);
+    expect(breakdown[1].linesCount).toBe(1);
+    expect(breakdown[1].hasEditPermission).toBe(false);
+  });
+
+  it("sur une carte sans lignes, l'encadré est vide (défensif)", () => {
+    expect(buildInstallationBreakdown(card, units, noPrefs, legacyUnit).length).toBe(2);
+    expect(
+      buildInstallationBreakdown({ ...card, lines: [] }, units, noPrefs, legacyUnit)
+    ).toEqual([]);
   });
 });
