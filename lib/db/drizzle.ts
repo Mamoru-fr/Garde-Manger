@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "./schema";
 import { createRetryFetch } from "./neonFetch";
 
@@ -24,12 +24,21 @@ const neonFetchOptions = {
       : 750,
 };
 
-// Créer une connexion Neon HTTP (compatible avec Server Actions)
-// sur le fetch résilient : les échecs réseau et les 5xx se
-// rejouent avec backoff court (lib/db/neonFetch — testé).
-const sql = neon(databaseUrl, {
-  fetch: createRetryFetch(fetch, neonFetchOptions),
-});
+// ⚠️ PIÈGE GRAVÉ (coûté une journée de « retry qui ne retry pas ») :
+// l'option `fetch` de neon() N'EXISTE PLUS depuis
+// @neondatabase/serverless 1.0 — elle date de la v0.x, et une option
+// inconnue s'ignore EN SILENCE à l'exécution (le dev server ne
+// type-checke pas : seul tsc l'aurait signalée). Le fetch
+// personnalisé passe désormais par la config GLOBALE du driver :
+// neonConfig.fetchFunction, lue à CHAQUE requête HTTP
+// (index.js du driver : `await (fetchFunction ?? fetch)(…)`).
+neonConfig.fetchFunction = createRetryFetch(fetch, neonFetchOptions);
+
+// Créer une connexion Neon HTTP (compatible avec Server Actions).
+// Le fetch résilient vient de neonConfig.fetchFunction ci-dessus :
+// échecs réseau et 5xx rejoués avec backoff court (lib/db/neonFetch,
+// testé — 15 cas TDD).
+const sql = neon(databaseUrl);
 
 // Initialisation de Drizzle ORM avec Neon HTTP
 // Ce driver est optimisé pour les environnements serverless comme Next.js
@@ -42,8 +51,7 @@ export const db = drizzle(sql, {
 export * from "./schema";
 
 // Fonction utilitaire pour les scripts (ex: migrations)
+// — même fetch résilient, hérité de la config globale.
 export function getNeonClient() {
-  return neon(databaseUrl, {
-    fetch: createRetryFetch(fetch, neonFetchOptions),
-  });
+  return neon(databaseUrl);
 }
