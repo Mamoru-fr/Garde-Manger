@@ -126,6 +126,15 @@ export interface GenericDirectoryDetailResult {
   code?: string;
 }
 
+// Format de retour de l'action du niveau 3 (fiche générique
+// d'installation : la liste des sachets vit dans card.lines).
+export interface InstallationDirectoryDetailResult {
+  success: boolean;
+  card?: GenericStockCard;
+  error?: string;
+  code?: string;
+}
+
 // --------------------------------------------
 // getExpiryFilter — conditions Drizzle du filtre de statut de péremption.
 // (Déplacé depuis StockActions le 03/10 : la requête de la vue vit ici.)
@@ -520,4 +529,47 @@ function emptyGenericStats(): GenericStockStats {
     categoriesDistribution: {},
     installationsDistribution: {},
   };
+}
+
+// --------------------------------------------
+// Niveau 3 de la pyramide — la fiche générique d'installation
+// (`/installations/[id]/stock/[directoryId]` — décision Alexis 04/10)
+//
+// RÉUTILISATION, pas création : la vue existante, périmètre réduit à
+// CETTE installation + fiche = CE générique — zéro nouvelle requête,
+// le même pattern que le niveau 2 (le filtre directoryId de
+// GenericStockFilters). La carte qui en sort porte exactement les
+// sachets de cette installation, triés par la vue.
+// --------------------------------------------
+
+// La fiche générique d'installation : la carte unique du générique
+// dans le périmètre d'une installation.
+export type InstallationDirectoryDetail =
+  | { ok: true; card: GenericStockCard }
+  | { ok: false; code: "NO_INSTALLATION" | "INSTALLATION_ACCESS_DENIED" | "NOT_FOUND" };
+
+export async function getInstallationDirectoryDetail(
+  userId: string,
+  installationId: string,
+  directoryId: string
+): Promise<InstallationDirectoryDetail> {
+  const view = await getGenericStockView(userId, {
+    directoryId,
+    installationId,
+  });
+  if (!view.ok) {
+    // Installation hors périmètre de l'utilisateur.
+    return { ok: false, code: view.code };
+  }
+
+  const card = view.cards.find((c) => c.id === directoryId) ?? null;
+  if (!card) {
+    // Fiche inconnue, hors périmètre, ou sans aucune ligne dans cette
+    // installation : le niveau 3 est une fiche de STOCK, comme le 2 —
+    // elle n'existe que portée par des lignes (aucun indice sur
+    // laquelle des trois causes : pas de fuite d'information).
+    return { ok: false, code: "NOT_FOUND" };
+  }
+
+  return { ok: true, card };
 }

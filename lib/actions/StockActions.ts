@@ -24,11 +24,13 @@ import { ErrorCodes } from "@/lib/types";
 import {
   getGenericStockView,
   getGenericDirectoryDetail,
+  getInstallationDirectoryDetail,
 } from "@/lib/services/StockQueryService";
 import type {
   GenericStockFilters,
   GenericStockActionResult,
   GenericDirectoryDetailResult,
+  InstallationDirectoryDetailResult,
 } from "@/lib/services/StockQueryService";
 
 /**
@@ -156,6 +158,70 @@ export async function getGenericDirectoryCard(
     return { success: true, card: detail.card, breakdown: detail.breakdown };
   } catch (error) {
     console.error("[StockActions] Erreur dans getGenericDirectoryCard:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la récupération de la fiche",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}
+
+/**
+ * FICHE GÉNÉRIQUE D'INSTALLATION (niveau 3 de la pyramide — bloc 3)
+ * `/installations/[id]/stock/[directoryId]` : la carte du générique
+ * dans le périmètre d'une installation — ses lignes sont exactement
+ * les sachets à lister (édition/suppression par la ligne).
+ * L'action orchestre (session) et délègue au service — zéro DB ici.
+ */
+export async function getInstallationDirectoryCard(
+  installationId: string,
+  directoryId: string
+): Promise<InstallationDirectoryDetailResult> {
+  try {
+    console.log(
+      "[StockActions] getInstallationDirectoryCard:",
+      installationId,
+      directoryId
+    );
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    const detail = await getInstallationDirectoryDetail(
+      session.user.id,
+      installationId,
+      directoryId
+    );
+    if (!detail.ok) {
+      if (detail.code === "NOT_FOUND") {
+        // Fiche inconnue ou sans aucune ligne dans cette installation :
+        // le niveau 3 est une fiche de STOCK, comme le niveau 2.
+        return {
+          success: false,
+          error: "Fiche générique introuvable dans cette installation",
+          code: ErrorCodes.NOT_FOUND,
+        };
+      }
+      return {
+        success: false,
+        error: "Installation inaccessible",
+        code: detail.code,
+      };
+    }
+
+    return { success: true, card: detail.card };
+  } catch (error) {
+    console.error(
+      "[StockActions] Erreur dans getInstallationDirectoryCard:",
+      error
+    );
     return {
       success: false,
       error: "Erreur lors de la récupération de la fiche",
