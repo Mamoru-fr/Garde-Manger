@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock, Package, Calendar, ExternalLink } from "lucide-react";
 
 import { getVariantCard } from "@/lib/actions/VariantActions";
+import VariantImage from "@/components/stock/VariantImage";
 import { auth } from "@/lib/auth/auth";
 import { getAuthHeaders } from "@/lib/utils/auth";
 import styles from "./VariantDetail.module.css";
@@ -148,17 +149,14 @@ export default async function VariantDetailPage({
           )}
         </div>
 
+        {/* Handler onError interdit en Server Component (fonction prop
+            non sérialisable) — il vit dans VariantImage, composant client
+            (pattern ObjectGlobalCard). */}
         {card.imageUrl && (
-          <img
+          <VariantImage
             src={card.imageUrl}
             alt={`Photo de ${card.brandLabel}`}
             className={styles.productImage}
-            onError={(e) => {
-              // Comme ObjectGlobalCard : une image OFF morte se cache,
-              // elle ne casse pas la mise en page.
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-            }}
           />
         )}
       </header>
