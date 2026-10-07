@@ -10,7 +10,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  margin-bottom: 1rem;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
@@ -464,6 +463,58 @@
 }
 
 /* ============================================
+   SECTION REPLIÉE — détails optionnels (option A)
+   ============================================ */
+.optionalDetails {
+  margin-top: 0.75rem;
+}
+
+.optionalSummary {
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #8b4513;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #d4b896;
+  border-radius: 8px;
+  background: #fdf6e8;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  box-sizing: border-box;
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.optionalSummary::-webkit-details-marker {
+  display: none;
+}
+
+.optionalSummary::before {
+  content: "▸";
+  font-size: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.optionalDetails[open] .optionalSummary::before {
+  transform: rotate(90deg);
+}
+
+.optionalSummary:hover {
+  background: #f7ecd9;
+}
+
+.optionalDetails[open] .optionalSummary {
+  border-style: solid;
+}
+
+.optionalDetails > .formSection {
+  margin-top: 0.75rem;
+}
+
+/* ============================================
    BUTTONS
    ============================================ */
 
@@ -474,6 +525,16 @@
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid #e8dfd0;
+  /* Optimisation mobile (option A) : les boutons d'action restent visibles
+     pendant le scroll (ils étaient au fond du formulaire, hors écran) ;
+     sticky à l'intérieur du conteneur scrollable (.modalContent), jamais
+     au-dessus de l'overlay. Safe-area iOS : la barre home ne mange pas
+     les boutons. */
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
 }
 
 .cancelButton,
@@ -554,17 +615,47 @@
    ============================================ */
 
 @media (max-width: 768px) {
+  /* Option A : BOTTOM SHEET — la modale s'ancre en bas, sous le pouce
+     (on scanne d'une main). L'ancien centré-haut rendait les boutons
+     inatteignables sans scroll, et le footer recouvrait le contenu. */
   .modalOverlay {
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding: 0.5rem;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
   }
 
   .modalContent {
-    margin: 0.5rem;
-    max-height: calc(100vh - 1rem);
-    width: calc(100% - 1rem);
-    align-self: flex-start;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    animation: slideUpSheet 0.25s ease-out;
+    padding-bottom: 0;
+  }
+
+  @keyframes slideUpSheet {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Cibles tactiles confortables (reco 44-48px) sur les boutons */
+  .cancelButton,
+  .submitButton {
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    flex: 1;
+  }
+
+  .formActions {
+    gap: 0.5rem;
   }
 
   .productHeader {
@@ -648,10 +739,10 @@
 
 @media (max-width: 480px) {
   .modalContent {
-    border-radius: 8px;
-    max-height: calc(100vh - 0.5rem);
-    width: calc(100% - 0.5rem);
-    align-self: flex-start;
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    width: 100%;
+    align-self: stretch;
   }
 
   .productHeader {

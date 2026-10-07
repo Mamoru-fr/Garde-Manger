@@ -378,27 +378,14 @@ export default function ScanDetailsForm({
           </div>
         </fieldset>
 
+        {/* Optimisation mobile (option A, Alexis 06/10) : la péremption
+            reste visible (cœur du produit), les champs de détail sont
+            repliés derrière le summary — un scan courant = quantité +
+            valider, sans scroller. */}
         <fieldset className={styles.formSection}>
           <legend className={styles.formSectionTitle}>Dates</legend>
 
           <div className={styles.formGrid}>
-            {/* Date d'achat */}
-            <div className={styles.formGroup}>
-              <label htmlFor="purchaseDate" className={styles.formLabel}>
-                <Calendar size={16} />
-                Date d'achat
-              </label>
-              <input
-                type="date"
-                id="purchaseDate"
-                name="purchaseDate"
-                value={formData.purchaseDate}
-                onChange={handleDateChange}
-                className={styles.formInput}
-                max={today}
-              />
-            </div>
-
             {/* Date de péremption */}
             <div className={styles.formGroup}>
               <label htmlFor="expiryDate" className={styles.formLabel}>
@@ -427,10 +414,32 @@ export default function ScanDetailsForm({
           </div>
         </fieldset>
 
-        <fieldset className={styles.formSection}>
-          <legend className={styles.formSectionTitle}>Informations supplémentaires</legend>
+        <details className={styles.optionalDetails}>
+          <summary className={styles.optionalSummary}>
+            Plus de détails (achat, lot, prix, notes)
+          </summary>
 
-          <div className={styles.formGrid}>
+          <fieldset className={styles.formSection}>
+            <legend className={styles.formSectionTitle}>Informations supplémentaires</legend>
+
+            <div className={styles.formGrid}>
+            {/* Date d'achat */}
+            <div className={styles.formGroup}>
+              <label htmlFor="purchaseDate" className={styles.formLabel}>
+                <Calendar size={16} />
+                Date d'achat
+              </label>
+              <input
+                type="date"
+                id="purchaseDate"
+                name="purchaseDate"
+                value={formData.purchaseDate}
+                onChange={handleDateChange}
+                className={styles.formInput}
+                max={today}
+              />
+            </div>
+
             {/* Numéro de lot */}
             <div className={styles.formGroup}>
               <label htmlFor="lotNumber" className={styles.formLabel}>
@@ -488,7 +497,8 @@ export default function ScanDetailsForm({
               placeholder="Ex: Acheté en promo, ouvert déjà, à consommer rapidement..."
             />
           </div>
-        </fieldset>
+          </fieldset>
+        </details>
 
         {/* Boutons d'action */}
         <div className={styles.formActions}>
