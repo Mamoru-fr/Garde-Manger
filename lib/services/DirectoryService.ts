@@ -163,7 +163,7 @@ export async function searchProductInDirectory(barcode: string): Promise<{
         variantBrand: productVariants.brand,
         variantNutriscore: productVariants.nutriscore,
         variantIsReadOnly: productVariants.isReadOnly,
-      }
+      })
       .from(objectDirectory)
       .leftJoin(barcodeDirectory, eq(barcodeDirectory.objectDirectoryId, objectDirectory.id))
       .leftJoin(productVariants, eq(productVariants.id, barcodeDirectory.productVariantId))
