@@ -3,7 +3,13 @@
 // ============================================
 
 import { db } from "@/lib/db/drizzle";
-import { objectDirectory, barcodeDirectory } from "@/lib/db/schema";
+import { objectDirectory, barcodeDirectory, productVariants } from "@/lib/db/schema";
+import {
+  buildOffCreationPlan,
+  buildScanVariantSummary,
+  applyVariantToDirectoryItem,
+  type ScanVariantSummary,
+} from "@/lib/services/ScanResolutionViewService";
 import { eq, or, ilike } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
@@ -151,9 +157,16 @@ export async function searchProductInDirectory(barcode: string): Promise<{
         imageUrl: objectDirectory.openFoodFactsId, // ✅ À améliorer: stocker imageUrl dans objectDirectory plus tard
         openFoodFactsId: objectDirectory.openFoodFactsId,
         isReadOnly: objectDirectory.isReadOnly,
-      })
+        barcodeRowId: barcodeDirectory.id,
+        barcodeRowVariantId: barcodeDirectory.productVariantId,
+        variantId: productVariants.id,
+        variantBrand: productVariants.brand,
+        variantNutriscore: productVariants.nutriscore,
+        variantIsReadOnly: productVariants.isReadOnly,
+      }
       .from(objectDirectory)
       .leftJoin(barcodeDirectory, eq(barcodeDirectory.objectDirectoryId, objectDirectory.id))
+      .leftJoin(productVariants, eq(productVariants.id, barcodeDirectory.productVariantId))
       .where(
         or(
           eq(objectDirectory.openFoodFactsId, cleanedBarcode),
@@ -164,18 +177,72 @@ export async function searchProductInDirectory(barcode: string): Promise<{
 
     if (localResult.length > 0) {
       const localItem = localResult[0];
-      const item: SimplifiedDirectoryItem = {
-        id: localItem.id,
-        barcode: cleanedBarcode,
-        name: localItem.name,
-        brand: localItem.brand || undefined,
-        description: localItem.description || undefined,
-        imageUrl: undefined, // ✅ À améliorer: imageUrl sera géré plus tard
-        nutriscore: localItem.nutriscore || undefined,
-        openFoodFactsId: localItem.openFoodFactsId || undefined,
-        isReadOnly: localItem.isReadOnly || false,
-      };
-      
+
+      // Chaîne 4:2 §5 : barcode → variante → générique. La variante liée
+      // prime à l'affichage ; sans variante (fiche legacy), repli générique.
+      let variantSummary = buildScanVariantSummary(
+        localItem.variantId
+          ? {
+              id: localItem.variantId,
+              brand: localItem.variantBrand,
+              nutriscore: localItem.variantNutriscore,
+              imageUrl: null,
+              isReadOnly: localItem.variantIsReadOnly,
+            }
+          : null,
+      );
+
+      // Rattrapage (Q1 Alexis 05/10 : « comme sur des roulettes ») — les fiches
+      // OFF nées entre le bloc 2 et la chaîne 4:2 portent marque et Nutri-Score
+      // sur le générique, sans variante. Le premier scan qui les retrouve abaisse
+      // ces champs dans une variante et lie le code-barres. Achèvement par
+      // relance : chaque étape est idempotente (la variante manquante seule est
+      // créée, le lien barcode n'est écrit qu'une fois).
+      if (!variantSummary && localItem.barcodeRowId && localItem.isReadOnly) {
+        // Une écriture ratée ne casse pas la lecture : repli legacy, le
+        // rattrapage se rejouera au scan suivant (chaque étape idempotente).
+        try {
+        const variantId = randomUUID();
+        await db.insert(productVariants).values({
+          id: variantId,
+          genericDirectoryId: localItem.id,
+          brand: localItem.brand,
+          nutriscore: localItem.nutriscore,
+          imageUrl: null,
+          openFoodFactsId: localItem.openFoodFactsId,
+          isReadOnly: true,
+        });
+        await db
+          .update(barcodeDirectory)
+          .set({ productVariantId: variantId })
+          .where(eq(barcodeDirectory.id, localItem.barcodeRowId));
+        variantSummary = buildScanVariantSummary({
+          id: variantId,
+          brand: localItem.brand,
+          nutriscore: localItem.nutriscore,
+          imageUrl: null,
+          isReadOnly: true,
+        });
+        } catch (rattrapageError) {
+          console.error("[DirectoryService] Rattrapage variante 4:2 échoué (repli legacy) :", rattrapageError);
+        }
+      }
+
+      const { item } = applyVariantToDirectoryItem(
+        {
+          id: localItem.id,
+          barcode: cleanedBarcode,
+          name: localItem.name,
+          brand: localItem.brand || null,
+          description: localItem.description || undefined,
+          imageUrl: undefined,
+          nutriscore: localItem.nutriscore || null,
+          openFoodFactsId: localItem.openFoodFactsId || undefined,
+          isReadOnly: localItem.isReadOnly || false,
+        },
+        variantSummary,
+      );
+
       scanCache.set(cleanedBarcode, { item, timestamp: Date.now(), fromDB: true });
       return { success: true, data: item, created: false };
     }
@@ -193,36 +260,73 @@ export async function searchProductInDirectory(barcode: string): Promise<{
       return { success: true, data: null, created: false };
     }
 
-    // 4. Créer l'objet dans objectDirectory (avec isReadOnly=true)
+    // 4. Chaîne 4:2 : générique (nom COMPLET, Q2 Alexis 05/10) + variante
+    //    (marque, Nutri-Score, image) + code-barres lié à la VARIANTE (§5 :
+    //    barcode → variante → générique). Ordre relançable : générique →
+    //    variante → barcode ; une fiche interrompue avant la variante est
+    //    complétée par le rattrapage du hit local au scan suivant.
     const newDirectoryId = randomUUID();
+    const newVariantId = randomUUID();
     const offData = mapOffProductToDirectoryData(offProduct as any);
-    
+    const plan = buildOffCreationPlan({
+      name: offData.name,
+      brand: offData.brand ?? null,
+      description: offData.description ?? null,
+      nutriscore: offData.nutriscore ?? null,
+      imageUrl: offData.imageUrl ?? null,
+      openFoodFactsId: offData.openFoodFactsId || cleanedBarcode,
+    });
+
     await db.insert(objectDirectory).values({
       id: newDirectoryId,
-      name: offData.name,
-      brand: offData.brand,
-      description: offData.description,
-      nutriscore: offData.nutriscore,
-      openFoodFactsId: offData.openFoodFactsId || cleanedBarcode,
+      name: plan.generic.name,
+      description: plan.generic.description,
+      openFoodFactsId: plan.generic.openFoodFactsId,
       isReadOnly: true, // ✅ Verrouillé car vient d'OpenFoodFacts
     });
 
-    // 5. Créer l'entrée dans barcodeDirectory
+    // 5. La variante porte la marque et le Nutri-Score (Q2 — ils descendent,
+    //    plus jamais sur le générique créé)
+    await db.insert(productVariants).values({
+      id: newVariantId,
+      genericDirectoryId: newDirectoryId,
+      brand: plan.variant.brand,
+      nutriscore: plan.variant.nutriscore,
+      imageUrl: plan.variant.imageUrl,
+      openFoodFactsId: plan.variant.openFoodFactsId,
+      isReadOnly: true,
+    });
+
+    // L'entrée barcodeDirectory pointe désormais sur la variante (§5)
     await db.insert(barcodeDirectory).values({
       id: randomUUID(),
       objectDirectoryId: newDirectoryId,
+      productVariantId: newVariantId,
       barcode: cleanedBarcode,
       barcodeType: "EAN13",
     });
 
-    // 6. Construire l'objet à retourner
+    // 6. Construire l'objet à retourner — la variante prime à l'affichage
+    const variantSummary: ScanVariantSummary = {
+      id: newVariantId,
+      brand: plan.variant.brand,
+      nutriscore: plan.variant.nutriscore,
+      imageUrl: plan.variant.imageUrl,
+      isReadOnly: true,
+    };
     const item: SimplifiedDirectoryItem = {
       id: newDirectoryId,
       barcode: cleanedBarcode,
-      ...offData,
+      name: plan.generic.name,
+      brand: plan.variant.brand,
+      description: plan.generic.description,
+      imageUrl: plan.variant.imageUrl || undefined,
+      nutriscore: plan.variant.nutriscore,
+      openFoodFactsId: plan.generic.openFoodFactsId || undefined,
       isReadOnly: true, // ✅ Forcé à true pour les objets OpenFoodFacts
+      variant: variantSummary,
     };
-    
+
     scanCache.set(cleanedBarcode, { item, timestamp: Date.now(), fromDB: false });
     return { success: true, data: item, created: true };
   } catch (error) {
