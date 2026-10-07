@@ -486,9 +486,62 @@
    ============================================ */
 
 @media (max-width: 768px) {
+  /* Option A (pattern ScanDetailsForm, Alexis 06/10) : BOTTOM SHEET —
+     ancrée en bas, sous le pouce. La structure est saine ici (le footer
+     vit déjà HORS du scroll, modalBody seul défile) — seul le placement
+     change. Safe-area iOS : la barre home ne mange pas les actions. */
+  .modalOverlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
   .modalContent {
-    max-width: 95%;
-    margin: 0 0.5rem;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    max-height: 92dvh;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    animation: sheetSlideUp 0.25s ease-out;
+  }
+
+  @keyframes sheetSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Cibles tactiles confortables (reco 44-48px) */
+  .quantityAdjustButton,
+  .quantityButton {
+    width: 48px;
+    height: 48px;
+  }
+
+  .quantityInputField {
+    width: 72px;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .deleteButton,
+  .moveButton,
+  .saveButton,
+  .cancelButton,
+  .editButton {
+    min-height: 48px;
+  }
+
+  /* Safe-area iOS sur les sections d'action en bas de la feuille */
+  .modalFooter,
+  .stockManagementSection {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .mainSection {
@@ -659,8 +712,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 8px;
   background: white;
