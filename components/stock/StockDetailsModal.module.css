@@ -15,6 +15,10 @@
   z-index: 1000;
   padding: 1rem;
   overflow-y: auto;
+  /* Fix 08/10 : plus jamais de fuite horizontale — le contenu doit
+     s'adapter, jamais fuir hors écran (macOS cache les scrollbars,
+     la fuite était invisible et ingérable). */
+  overflow-x: hidden;
 }
 
 .modalContent {
@@ -22,6 +26,11 @@
   border-radius: 12px;
   box-shadow: 0 25px 50px -12px rgba(46, 26, 16, 0.25);
   width: 100%;
+  /* Fix 08/10 (racine du bug « modale coupée à droite ») : sans
+     min-width: 0, la largeur intrinsèque du contenu (boutons nowrap,
+     select min-width, grilles) pouvait dépasser width:100% — la
+     modale grossissait hors écran, bouton Déplacer coupé. */
+  min-width: 0;
   max-width: 900px;
   max-height: 90vh;
   display: flex;
@@ -85,6 +94,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  overflow-wrap: anywhere;
 }
 
 .badges {
@@ -119,6 +129,7 @@
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  min-width: 0;
 }
 
 /* ============================================
@@ -544,6 +555,31 @@
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Fix 08/10 : la section « Déplacer » s'empile — select pleine largeur,
+     puis quantité + bouton côte à côte, bouton extensible. Plus jamais
+     une ligne à 3 éléments qui déborde ou wrappe au hasard. */
+  .moveControls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .installationSelect {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+  }
+
+  .moveQuantityInput {
+    min-height: 48px;
+    width: 90px;
+  }
+
+  .moveButton {
+    flex: 1;
+    min-height: 48px;
+  }
+
   .mainSection {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -770,7 +806,7 @@
 
 .installationSelect {
   flex: 1;
-  min-width: 200px;
+  min-width: 120px;
   padding: 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
