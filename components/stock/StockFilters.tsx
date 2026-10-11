@@ -1,16 +1,38 @@
 "use client";
 
+// ============================================
+// StockFilters — les filtres de la vue générique
+// (bloc 3, étendus le 11/10) : la recherche porte sur le
+// nom du générique, la marque de la variante et le
+// code-barres (décision Alexis) ; elle est TOUJOURS
+// visible en haut de page (plus de dépliage préalable).
+// Le tri par quantité exige une
+// famille d'unités (Q4 : les cartes des autres
+// familles sont masquées, tri sur la valeur en base).
+// ============================================
+
 import { useState, useEffect, useCallback } from "react";
 import { Search, Filter, X, ChevronDown, Calendar, MapPin, Tag, SortAsc, SortDesc } from "lucide-react";
-import { StockFilters as StockFiltersType } from "@/lib/types/stockTypes";
+// Types de la couche data/spec : import type uniquement (pas d'import DB
+// dans un composant client — le type s'efface à la compilation).
+import type { GenericStockFilters } from "@/lib/services/StockQueryService";
+import type { UnitFamily } from "@/lib/services/QuantityService";
 import styles from "./StockFilters.module.css";
+
+// Q4 : les familles d'unités sélectionnables au tri par quantité.
+const QUANTITY_FAMILIES: Array<{ value: UnitFamily; label: string }> = [
+  { value: "masse", label: "Masse (g, kg…)" },
+  { value: "volume", label: "Volume (ml, L…)" },
+  { value: "discrete", label: "Unités (sachets, pièces…)" },
+  { value: "autre", label: "Autre" },
+];
 
 interface StockFiltersProps {
   installations?: Array<{ id: string; name: string }>;
   categories?: Array<{ id: string; name: string }>;
   locations?: string[];
-  initialFilters?: StockFiltersType;
-  onFilterChange: (filters: StockFiltersType) => void;
+  initialFilters?: GenericStockFilters;
+  onFilterChange: (filters: GenericStockFilters) => void;
 }
 
 export default function StockFilters({
@@ -20,7 +42,7 @@ export default function StockFilters({
   initialFilters = {},
   onFilterChange,
 }: StockFiltersProps) {
-  const [filters, setFilters] = useState<StockFiltersType>(initialFilters);
+  const [filters, setFilters] = useState<GenericStockFilters>(initialFilters);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Appliquer les changements de filtres avec un léger délai pour éviter trop de raffraîchissements
@@ -58,7 +80,13 @@ export default function StockFilters({
   }, []);
 
   const handleSortChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilters(prev => ({ ...prev, sortBy: e.target.value as 'name' | 'quantity' | 'expiry_date' | 'purchase_date' | 'added_date' }));
+    setFilters(prev => ({ ...prev, sortBy: e.target.value as 'name' | 'quantity' | 'expiry_date' | 'added_date' }));
+  }, []);
+
+  // Q4 : la famille d'unités du tri par quantité.
+  const handleQuantityFamilyChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as UnitFamily | '';
+    setFilters(prev => ({ ...prev, quantityFamily: value || null }));
   }, []);
 
   const handleSortOrderChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -70,11 +98,36 @@ export default function StockFilters({
   }, []);
 
   const activeFiltersCount = Object.values(filters).filter(
-    (value) => value !== undefined && value !== '' && value !== 'all'
+    (value) => value !== undefined && value !== null && value !== '' && value !== 'all'
   ).length;
 
   return (
     <div className={styles.filtersContainer}>
+      {/* Recherche toujours visible (décision Alexis 11/10) : retrouver un
+          produit = un geste. Débounce 300ms dans l'effet du haut. */}
+      <div className={styles.searchBar}>
+        <div className={styles.inputWrapper}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            placeholder="Rechercher un produit, une marque, un code-barres..."
+            value={filters.searchQuery || ''}
+            onChange={handleSearchChange}
+            className={styles.searchInput}
+          />
+          {filters.searchQuery && (
+            <button
+              type="button"
+              onClick={() => setFilters(prev => ({ ...prev, searchQuery: '' }))}
+              className={styles.searchClear}
+              aria-label="Effacer la recherche"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className={styles.filtersHeader}>
         <button 
           type="button" 
@@ -106,24 +159,6 @@ export default function StockFilters({
 
       {isExpanded && (
         <div className={styles.filtersContent}>
-          {/* Recherche */}
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>
-              <Search size={16} />
-              Recherche
-            </label>
-            <div className={styles.inputWrapper}>
-              <Search size={16} className={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Nom, code-barres, marque..."
-                value={filters.searchQuery || ''}
-                onChange={handleSearchChange}
-                className={styles.searchInput}
-              />
-            </div>
-          </div>
-
           {/* Filtres en grille */}
           <div className={styles.filtersGrid}>
             {/* Installation (uniquement pour la vue globale) */}
@@ -228,11 +263,32 @@ export default function StockFilters({
                 <option value="name">Nom</option>
                 <option value="quantity">Quantité</option>
                 <option value="expiry_date">Date de péremption</option>
-                <option value="purchase_date">Date d'achat</option>
                 <option value="added_date">Date d'ajout</option>
               </select>
             </div>
-            
+
+            {/* Q4 : famille d'unités, visible uniquement au tri par quantité */}
+            {filters.sortBy === 'quantity' && (
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>
+                  <SortAsc size={16} />
+                  Famille
+                </label>
+                <select
+                  value={filters.quantityFamily || ''}
+                  onChange={handleQuantityFamilyChange}
+                  className={styles.selectInput}
+                >
+                  <option value="">Toutes</option>
+                  {QUANTITY_FAMILIES.map(family => (
+                    <option key={family.value} value={family.value}>
+                      {family.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>
                 <SortDesc size={16} />

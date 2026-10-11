@@ -172,3 +172,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================
+   FIX 11/10 — RECHERCHE TOUJOURS VISIBLE
+   (décision Alexis : retrouver un produit = un geste)
+   ============================================ */
+
+.searchBar {
+  margin-bottom: 0.75rem;
+}
+
+.searchClear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b5b47;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border-radius: 50%;
+  padding: 0.375rem;
+}
+
+.searchClear:hover {
+  background: #f5ead6;
+}
+
+@media (max-width: 768px) {
+  .searchInput {
+    min-height: 48px;
+  }
+}
+

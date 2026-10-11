@@ -6,7 +6,7 @@
 
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import { getCurrentSession } from "@/lib/utils/auth";
-import { searchInDirectory, searchByName, searchByNameLocal, isValidBarcode, cleanBarcode } from "@/lib/services/DirectoryService";
+import { searchInDirectory, searchByName, searchByNameLocal, isValidBarcode, cleanBarcode, linkBarcodeToDirectoryService } from "@/lib/services/DirectoryService";
 import { ActionResponse } from "@/lib/types";
 import { SearchProductsByNameSchema } from "@/lib/validations/object";
 
@@ -217,6 +217,61 @@ export async function getBarcodeMetadata(barcode: string): Promise<ActionRespons
     return {
       success: false,
       error: "Erreur lors de la récupération",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
+/**
+ * Lie un code-barres à une fiche existante de l'annuaire (round 3 du
+ * chantier 4:2 — 11/10) : scanner un code inconnu et dire « c'est ce
+ * produit-là ». Porte d'entrée : session + validation, zéro DB
+ * (invariant bloc 3 — la logique vit dans DirectoryService).
+ */
+export async function linkBarcodeToDirectory(
+  barcode: string,
+  directoryId: string
+): Promise<ActionResponse<{ linked: boolean }>> {
+  try {
+    // Les données de l'annuaire sont réservées aux utilisateurs connectés
+    const session = await getCurrentSession();
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: "UNAUTHORIZED",
+      };
+    }
+
+    // Validation de la porte d'entrée (obligation de couche)
+    if (!barcode || !barcode.trim() || !directoryId || !directoryId.trim()) {
+      return {
+        success: false,
+        error: "Code-barres ou fiche cible manquant",
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    const result = await linkBarcodeToDirectoryService(barcode, directoryId);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Erreur lors de la liaison",
+        code: result.code || "INTERNAL_ERROR",
+      };
+    }
+
+    return {
+      success: true,
+      data: { linked: result.data?.linked ?? false },
+    };
+  } catch (error) {
+    console.error("Erreur liaison code-barres → fiche:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la liaison du code-barres",
       code: "INTERNAL_ERROR",
     };
   }

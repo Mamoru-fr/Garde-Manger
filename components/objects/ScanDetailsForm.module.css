@@ -10,7 +10,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  margin-bottom: 1rem;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
@@ -464,6 +463,58 @@
 }
 
 /* ============================================
+   SECTION REPLIÉE — détails optionnels (option A)
+   ============================================ */
+.optionalDetails {
+  margin-top: 0.75rem;
+}
+
+.optionalSummary {
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #8b4513;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #d4b896;
+  border-radius: 8px;
+  background: #fdf6e8;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  box-sizing: border-box;
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.optionalSummary::-webkit-details-marker {
+  display: none;
+}
+
+.optionalSummary::before {
+  content: "▸";
+  font-size: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.optionalDetails[open] .optionalSummary::before {
+  transform: rotate(90deg);
+}
+
+.optionalSummary:hover {
+  background: #f7ecd9;
+}
+
+.optionalDetails[open] .optionalSummary {
+  border-style: solid;
+}
+
+.optionalDetails > .formSection {
+  margin-top: 0.75rem;
+}
+
+/* ============================================
    BUTTONS
    ============================================ */
 
@@ -474,6 +525,16 @@
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid #e8dfd0;
+  /* Optimisation mobile (option A) : les boutons d'action restent visibles
+     pendant le scroll (ils étaient au fond du formulaire, hors écran) ;
+     sticky à l'intérieur du conteneur scrollable (.modalContent), jamais
+     au-dessus de l'overlay. Safe-area iOS : la barre home ne mange pas
+     les boutons. */
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
 }
 
 .cancelButton,
@@ -554,17 +615,47 @@
    ============================================ */
 
 @media (max-width: 768px) {
+  /* Option A : BOTTOM SHEET — la modale s'ancre en bas, sous le pouce
+     (on scanne d'une main). L'ancien centré-haut rendait les boutons
+     inatteignables sans scroll, et le footer recouvrait le contenu. */
   .modalOverlay {
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding: 0.5rem;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
   }
 
   .modalContent {
-    margin: 0.5rem;
-    max-height: calc(100vh - 1rem);
-    width: calc(100% - 1rem);
-    align-self: flex-start;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    animation: slideUpSheet 0.25s ease-out;
+    padding-bottom: 0;
+  }
+
+  @keyframes slideUpSheet {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Cibles tactiles confortables (reco 44-48px) sur les boutons */
+  .cancelButton,
+  .submitButton {
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    flex: 1;
+  }
+
+  .formActions {
+    gap: 0.5rem;
   }
 
   .productHeader {
@@ -648,10 +739,10 @@
 
 @media (max-width: 480px) {
   .modalContent {
-    border-radius: 8px;
-    max-height: calc(100vh - 0.5rem);
-    width: calc(100% - 0.5rem);
-    align-self: flex-start;
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    width: 100%;
+    align-self: stretch;
   }
 
   .productHeader {
@@ -778,4 +869,190 @@
   .actionButton {
     padding: 0.625rem 1.25rem;
   }
+}
+
+/* ============================================
+   R2 4:2 — BLOC INFORMATIF VARIANTE (Q3 Alexis)
+   ============================================ */
+
+.variantInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fdf6e8;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+  /* Leçon 08/10 : jamais de fuite par largeur intrinsèque */
+  min-width: 0;
+}
+
+.variantImage {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: white;
+  flex-shrink: 0;
+}
+
+.variantText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.variantLabel {
+  font-size: 0.75rem;
+  color: #6b5b47;
+}
+
+.variantBrand {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2e1a10;
+  overflow-wrap: anywhere;
+}
+
+.variantLink {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b5e34;
+  text-decoration: underline;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* ============================================
+   Liaison code-barres → fiche existante (round 3 du 4:2 — 11/10) :
+   produit inconnu → retrouver la fiche dans l'annuaire.
+   ============================================ */
+
+.linkSection {
+  padding: 0.75rem 1rem;
+  margin: 0 1.5rem 1rem;
+  background: #fdf6e8;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+}
+
+.linkTitle {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #2e1a10;
+}
+
+.linkHint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: #6b5b47;
+}
+
+.linkSearchForm {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.linkInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d8c9b8;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: #fffdf9;
+  color: #2e1a10;
+}
+
+.linkSearchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  border: none;
+  border-radius: 8px;
+  background: #6b4a32;
+  color: #fffdf9;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.linkSearchButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.linkResults {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.linkResultItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #fffdf9;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  min-height: 48px;
+  font-size: 0.875rem;
+  color: #2e1a10;
+}
+
+.linkResultItem:hover:not(:disabled) {
+  border-color: #6b4a32;
+  background: #fdf1e3;
+}
+
+.linkResultItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.linkResultName {
+  font-weight: 600;
+}
+
+.linkResultMeta {
+  font-size: 0.8rem;
+  color: #6b5b47;
+  overflow-wrap: anywhere;
+}
+
+.linkResultAction {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b4a32;
+}
+
+.linkEmpty {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #6b5b47;
+}
+
+.linkError {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #a33a2a;
 }

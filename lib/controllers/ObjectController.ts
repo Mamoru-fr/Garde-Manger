@@ -25,6 +25,14 @@ import {
   listObjectTypesService,
   createShopService,
   listShopsService,
+  listCategoriesService,
+  checkBarcodeInInstallationService,
+  findObjectInstallationByBarcodeService,
+  findObjectInstallationByIdService,
+  setObjectQuantityInInstallationService,
+  updateStockItemService,
+  deleteStockItemService,
+  type StockItemUpdateInput,
 } from "@/lib/services/ObjectService";
 
 // ============================================================================
@@ -633,6 +641,195 @@ export class ObjectController {
       return {
         success: false,
         error: "Erreur lors de la récupération des magasins",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // ==========================================================================
+  // STOCK & SCAN (bloc 3 — round de fermeture) : briques déléguées par les
+  // actions. Zéro accès DB côté action ni contrôleur : tout passe au service.
+  // ==========================================================================
+
+  // Lister toutes les catégories
+  static async listCategories(): Promise<ActionResponse<any>> {
+    try {
+      const result = await listCategoriesService();
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la récupération des catégories",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Vérifier la présence d'un code-barres dans une installation
+  static async checkBarcodeInInstallation(
+    installationId: string,
+    barcode: string
+  ): Promise<ActionResponse<{ found: boolean; quantity: number; objectId?: string }>> {
+    try {
+      if (!installationId || !barcode) {
+        return {
+          success: false,
+          error: "ID d'installation et code-barres requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await checkBarcodeInInstallationService(installationId, barcode);
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la vérification du code-barres",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Trouver la ligne de stock d'un code-barres dans une installation
+  static async findObjectInstallationByBarcode(
+    installationId: string,
+    barcode: string
+  ): Promise<ActionResponse<{ item: { id: string; quantity: number } | null }>> {
+    try {
+      if (!installationId || !barcode) {
+        return {
+          success: false,
+          error: "ID d'installation et code-barres requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await findObjectInstallationByBarcodeService(installationId, barcode);
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la recherche par code-barres",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Trouver une ligne de stock par son ID
+  static async findObjectInstallationById(
+    objectInstallationId: string
+  ): Promise<
+    ActionResponse<{ item: { id: string; quantity: number; installationId: string } | null }>
+  > {
+    try {
+      if (!objectInstallationId) {
+        return {
+          success: false,
+          error: "L'ID de la ligne de stock est requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await findObjectInstallationByIdService(objectInstallationId);
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la recherche de la ligne de stock",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Poser une quantité sur une ligne de stock (suppression si ≤ 0)
+  static async setObjectQuantityInInstallation(
+    objectInstallationId: string,
+    newQuantity: number,
+    userId: string
+  ): Promise<ActionResponse<{ deleted: boolean }>> {
+    try {
+      if (!objectInstallationId || !userId) {
+        return {
+          success: false,
+          error: "ID de la ligne de stock et utilisateur requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      if (typeof newQuantity !== "number" || Number.isNaN(newQuantity)) {
+        return {
+          success: false,
+          error: "La quantité doit être un nombre",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await setObjectQuantityInInstallationService(
+        objectInstallationId,
+        newQuantity,
+        userId
+      );
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la mise à jour de la quantité",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Mettre à jour une ligne de stock (vue "Mon Stock")
+  static async updateStockItem(
+    installationId: string,
+    objectInstallationId: string,
+    userId: string,
+    input: StockItemUpdateInput
+  ): Promise<ActionResponse<void>> {
+    try {
+      if (!installationId || !objectInstallationId || !userId) {
+        return {
+          success: false,
+          error: "ID d'installation, de ligne de stock et utilisateur requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await updateStockItemService(
+        installationId,
+        objectInstallationId,
+        input,
+        userId
+      );
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la mise à jour de l'objet",
+        code: ErrorCodes.INTERNAL_ERROR,
+      };
+    }
+  }
+
+  // Supprimer une ligne de stock (vue "Mon Stock")
+  static async deleteStockItem(
+    installationId: string,
+    objectInstallationId: string,
+    userId: string
+  ): Promise<ActionResponse<void>> {
+    try {
+      if (!installationId || !objectInstallationId || !userId) {
+        return {
+          success: false,
+          error: "ID d'installation, de ligne de stock et utilisateur requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+
+      return await deleteStockItemService(
+        installationId,
+        objectInstallationId,
+        userId
+      );
+    } catch (error) {
+      return {
+        success: false,
+        error: "Erreur lors de la suppression de l'objet",
         code: ErrorCodes.INTERNAL_ERROR,
       };
     }

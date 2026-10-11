@@ -82,6 +82,10 @@ export default function ScanClient({installationId, installationName}: ScanClien
   const streamRef = useRef<MediaStream | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
+  // Réf vers handleScanComplete (déclaré après startScanner à cause du cycle
+  // startScanner ↔ handleScanComplete) : le callback du scanner appelle
+  // toujours la version à jour, sans la figer dans les deps de startScanner.
+  const handleScanCompleteRef = useRef<(barcode: string) => Promise<void>>(async () => {});
 
   // État du formulaire de détails
   const [showDetailsForm, setShowDetailsForm] = useState(false);
@@ -111,6 +115,12 @@ export default function ScanClient({installationId, installationName}: ScanClien
 
     // Note: isScanning a été supprimé, on utilise scanStatus à la place
   }, []);
+
+  // Arrêter le scanner
+  const stopScanner = useCallback(() => {
+    cleanupScanner();
+    setScanStatus('idle');
+  }, [cleanupScanner]);
 
   // Démarrer le scanner
   const startScanner = useCallback(async () => {
@@ -264,7 +274,7 @@ export default function ScanClient({installationId, installationName}: ScanClien
             const barcodeText = result.getText();
             console.log(`[CAMERA DEBUG] Code détecté: ${barcodeText}`);
             stopScanner();
-            handleScanComplete(barcodeText);
+            handleScanCompleteRef.current(barcodeText);
           }
           if (err) {
             console.error("[CAMERA DEBUG] Erreur de décodage:", err);
@@ -308,13 +318,7 @@ export default function ScanClient({installationId, installationName}: ScanClien
       setScanStatus('error');
       cleanupScanner();
     }
-  }, [scannerConfig.facingMode, cleanupScanner, scannedBarcode]);
-
-  // Arrêter le scanner
-  const stopScanner = useCallback(() => {
-    cleanupScanner();
-    setScanStatus('idle');
-  }, [cleanupScanner]);
+  }, [scannerConfig.facingMode, cleanupScanner, stopScanner, scannedBarcode]);
 
   // Gérer le résultat complet du scan
   const handleScanComplete = useCallback(async (barcode: string) => {
@@ -344,6 +348,11 @@ export default function ScanClient({installationId, installationName}: ScanClien
       startScanner();
     }
   }, [installationId, startScanner]);
+
+  // Synchroniser la réf : le scanner appelle toujours la dernière version
+  useEffect(() => {
+    handleScanCompleteRef.current = handleScanComplete;
+  }, [handleScanComplete]);
 
   // Gestion des modales
   const handleActionSuccess = useCallback(() => {

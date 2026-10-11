@@ -3,10 +3,18 @@
 // ============================================
 
 import { db } from "@/lib/db/drizzle";
-import { objectDirectory, barcodeDirectory } from "@/lib/db/schema";
+import { objectDirectory, barcodeDirectory, productVariants } from "@/lib/db/schema";
+import {
+  buildBarcodeLinkPlan,
+  buildOffCreationPlan,
+  buildScanVariantSummary,
+  applyVariantToDirectoryItem,
+  type ScanVariantSummary,
+} from "@/lib/services/ScanResolutionViewService";
 import { eq, or, ilike } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
+import { ErrorCodes, type ErrorCode } from "@/lib/types";
 
 // Configuration de l'API OpenFoodFacts
 const OPEN_FOOD_FACTS_API_URL = "https://api.openfoodfacts.org/api/v3";
@@ -151,9 +159,16 @@ export async function searchProductInDirectory(barcode: string): Promise<{
         imageUrl: objectDirectory.openFoodFactsId, // ✅ À améliorer: stocker imageUrl dans objectDirectory plus tard
         openFoodFactsId: objectDirectory.openFoodFactsId,
         isReadOnly: objectDirectory.isReadOnly,
+        barcodeRowId: barcodeDirectory.id,
+        barcodeRowVariantId: barcodeDirectory.productVariantId,
+        variantId: productVariants.id,
+        variantBrand: productVariants.brand,
+        variantNutriscore: productVariants.nutriscore,
+        variantIsReadOnly: productVariants.isReadOnly,
       })
       .from(objectDirectory)
       .leftJoin(barcodeDirectory, eq(barcodeDirectory.objectDirectoryId, objectDirectory.id))
+      .leftJoin(productVariants, eq(productVariants.id, barcodeDirectory.productVariantId))
       .where(
         or(
           eq(objectDirectory.openFoodFactsId, cleanedBarcode),
@@ -164,18 +179,72 @@ export async function searchProductInDirectory(barcode: string): Promise<{
 
     if (localResult.length > 0) {
       const localItem = localResult[0];
-      const item: SimplifiedDirectoryItem = {
-        id: localItem.id,
-        barcode: cleanedBarcode,
-        name: localItem.name,
-        brand: localItem.brand || undefined,
-        description: localItem.description || undefined,
-        imageUrl: undefined, // ✅ À améliorer: imageUrl sera géré plus tard
-        nutriscore: localItem.nutriscore || undefined,
-        openFoodFactsId: localItem.openFoodFactsId || undefined,
-        isReadOnly: localItem.isReadOnly || false,
-      };
-      
+
+      // Chaîne 4:2 §5 : barcode → variante → générique. La variante liée
+      // prime à l'affichage ; sans variante (fiche legacy), repli générique.
+      let variantSummary = buildScanVariantSummary(
+        localItem.variantId
+          ? {
+              id: localItem.variantId,
+              brand: localItem.variantBrand,
+              nutriscore: localItem.variantNutriscore,
+              imageUrl: null,
+              isReadOnly: localItem.variantIsReadOnly,
+            }
+          : null,
+      );
+
+      // Rattrapage (Q1 Alexis 05/10 : « comme sur des roulettes ») — les fiches
+      // OFF nées entre le bloc 2 et la chaîne 4:2 portent marque et Nutri-Score
+      // sur le générique, sans variante. Le premier scan qui les retrouve abaisse
+      // ces champs dans une variante et lie le code-barres. Achèvement par
+      // relance : chaque étape est idempotente (la variante manquante seule est
+      // créée, le lien barcode n'est écrit qu'une fois).
+      if (!variantSummary && localItem.barcodeRowId && localItem.isReadOnly) {
+        // Une écriture ratée ne casse pas la lecture : repli legacy, le
+        // rattrapage se rejouera au scan suivant (chaque étape idempotente).
+        try {
+        const variantId = randomUUID();
+        await db.insert(productVariants).values({
+          id: variantId,
+          genericDirectoryId: localItem.id,
+          brand: localItem.brand,
+          nutriscore: localItem.nutriscore,
+          imageUrl: null,
+          openFoodFactsId: localItem.openFoodFactsId,
+          isReadOnly: true,
+        });
+        await db
+          .update(barcodeDirectory)
+          .set({ productVariantId: variantId })
+          .where(eq(barcodeDirectory.id, localItem.barcodeRowId));
+        variantSummary = buildScanVariantSummary({
+          id: variantId,
+          brand: localItem.brand,
+          nutriscore: localItem.nutriscore,
+          imageUrl: null,
+          isReadOnly: true,
+        });
+        } catch (rattrapageError) {
+          console.error("[DirectoryService] Rattrapage variante 4:2 échoué (repli legacy) :", rattrapageError);
+        }
+      }
+
+      const { item } = applyVariantToDirectoryItem(
+        {
+          id: localItem.id,
+          barcode: cleanedBarcode,
+          name: localItem.name,
+          brand: localItem.brand || null,
+          description: localItem.description || undefined,
+          imageUrl: undefined,
+          nutriscore: localItem.nutriscore || null,
+          openFoodFactsId: localItem.openFoodFactsId || undefined,
+          isReadOnly: localItem.isReadOnly || false,
+        },
+        variantSummary,
+      );
+
       scanCache.set(cleanedBarcode, { item, timestamp: Date.now(), fromDB: true });
       return { success: true, data: item, created: false };
     }
@@ -193,36 +262,73 @@ export async function searchProductInDirectory(barcode: string): Promise<{
       return { success: true, data: null, created: false };
     }
 
-    // 4. Créer l'objet dans objectDirectory (avec isReadOnly=true)
+    // 4. Chaîne 4:2 : générique (nom COMPLET, Q2 Alexis 05/10) + variante
+    //    (marque, Nutri-Score, image) + code-barres lié à la VARIANTE (§5 :
+    //    barcode → variante → générique). Ordre relançable : générique →
+    //    variante → barcode ; une fiche interrompue avant la variante est
+    //    complétée par le rattrapage du hit local au scan suivant.
     const newDirectoryId = randomUUID();
+    const newVariantId = randomUUID();
     const offData = mapOffProductToDirectoryData(offProduct as any);
-    
+    const plan = buildOffCreationPlan({
+      name: offData.name,
+      brand: offData.brand ?? null,
+      description: offData.description ?? null,
+      nutriscore: offData.nutriscore ?? null,
+      imageUrl: offData.imageUrl ?? null,
+      openFoodFactsId: offData.openFoodFactsId || cleanedBarcode,
+    });
+
     await db.insert(objectDirectory).values({
       id: newDirectoryId,
-      name: offData.name,
-      brand: offData.brand,
-      description: offData.description,
-      nutriscore: offData.nutriscore,
-      openFoodFactsId: offData.openFoodFactsId || cleanedBarcode,
+      name: plan.generic.name,
+      description: plan.generic.description,
+      openFoodFactsId: plan.generic.openFoodFactsId,
       isReadOnly: true, // ✅ Verrouillé car vient d'OpenFoodFacts
     });
 
-    // 5. Créer l'entrée dans barcodeDirectory
+    // 5. La variante porte la marque et le Nutri-Score (Q2 — ils descendent,
+    //    plus jamais sur le générique créé)
+    await db.insert(productVariants).values({
+      id: newVariantId,
+      genericDirectoryId: newDirectoryId,
+      brand: plan.variant.brand,
+      nutriscore: plan.variant.nutriscore,
+      imageUrl: plan.variant.imageUrl,
+      openFoodFactsId: plan.variant.openFoodFactsId,
+      isReadOnly: true,
+    });
+
+    // L'entrée barcodeDirectory pointe désormais sur la variante (§5)
     await db.insert(barcodeDirectory).values({
       id: randomUUID(),
       objectDirectoryId: newDirectoryId,
+      productVariantId: newVariantId,
       barcode: cleanedBarcode,
       barcodeType: "EAN13",
     });
 
-    // 6. Construire l'objet à retourner
+    // 6. Construire l'objet à retourner — la variante prime à l'affichage
+    const variantSummary: ScanVariantSummary = {
+      id: newVariantId,
+      brand: plan.variant.brand,
+      nutriscore: plan.variant.nutriscore,
+      imageUrl: plan.variant.imageUrl,
+      isReadOnly: true,
+    };
     const item: SimplifiedDirectoryItem = {
       id: newDirectoryId,
       barcode: cleanedBarcode,
-      ...offData,
+      name: plan.generic.name,
+      brand: plan.variant.brand,
+      description: plan.generic.description,
+      imageUrl: plan.variant.imageUrl || undefined,
+      nutriscore: plan.variant.nutriscore,
+      openFoodFactsId: plan.generic.openFoodFactsId || undefined,
       isReadOnly: true, // ✅ Forcé à true pour les objets OpenFoodFacts
+      variant: variantSummary,
     };
-    
+
     scanCache.set(cleanedBarcode, { item, timestamp: Date.now(), fromDB: false });
     return { success: true, data: item, created: true };
   } catch (error) {
@@ -376,3 +482,125 @@ export {
   CACHE_TTL,
   scanCache,
 };
+
+// ============================================
+// Liaison code-barres → fiche existante (round 3 du 4:2 — 11/10).
+// Scanner un code inconnu et dire « c'est ce produit-là » : la fiche
+// existante reçoit le code-barres, l'objet du submit ira chez elle via
+// la chaîne existante (addScannedObject retrouve la ligne liée).
+// ============================================
+
+/**
+ * Lie un code-barres à une fiche existante de l'annuaire. Idempotent :
+ * déjà liée à cette fiche → succès sans écriture. Conflit (liée à une
+ * autre fiche) → refus explicite, jamais de re-pointage silencieux
+ * (le geste de fusion existe déjà : R4/R5 du bloc 4).
+ * Piège gravé : le résultat NÉGATIF du scan est caché (scanCache) —
+ * sans invalidation, le submit re-créerait une fiche malgré la liaison.
+ * La liaison écrit productVariantId NULL : on sait que le code identifie
+ * la fiche, pas la variante (le rattrapage 4:2 self-healing complètera
+ * si OpenFoodFacts connaît le code).
+ */
+export async function linkBarcodeToDirectoryService(
+  barcode: string,
+  directoryId: string
+): Promise<{ success: boolean; error?: string; code?: ErrorCode; data?: { linked: boolean } }> {
+  const cleanedBarcode = cleanBarcode(barcode);
+  const targetDirectoryId = directoryId.trim();
+
+  if (!cleanedBarcode || !isValidBarcode(cleanedBarcode)) {
+    return {
+      success: false,
+      error: "Code-barres invalide",
+      code: ErrorCodes.INVALID_BARCODE,
+    };
+  }
+
+  if (targetDirectoryId === "") {
+    return {
+      success: false,
+      error: "Fiche cible invalide",
+      code: ErrorCodes.VALIDATION_ERROR,
+    };
+  }
+
+  try {
+    // 1. État actuel du code-barres dans l'annuaire.
+    const existingRows = await db
+      .select({
+        objectDirectoryId: barcodeDirectory.objectDirectoryId,
+        productVariantId: barcodeDirectory.productVariantId,
+      })
+      .from(barcodeDirectory)
+      .where(eq(barcodeDirectory.barcode, cleanedBarcode))
+      .limit(1);
+
+    const existing = existingRows[0] ?? null;
+
+    // 2. Le plan pur tranche (testé — TDD 6 cas).
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: existing?.objectDirectoryId ?? null,
+      existingVariantId: existing?.productVariantId ?? null,
+      targetDirectoryId,
+    });
+
+    if (plan.action === "invalid") {
+      return {
+        success: false,
+        error: "Fiche cible invalide",
+        code: ErrorCodes.VALIDATION_ERROR,
+      };
+    }
+
+    if (plan.action === "conflict") {
+      return {
+        success: false,
+        error: "Ce code-barres est déjà lié à une autre fiche. Utilisez la fusion de fiches si vous voulez le déplacer.",
+        code: ErrorCodes.CONFLICT,
+      };
+    }
+
+    if (plan.action === "link") {
+      // 3. La fiche cible doit exister (id venant de l'UI — ne jamais
+      // écrire une FK vers une fiche fantôme).
+      const targetRows = await db
+        .select({ id: objectDirectory.id })
+        .from(objectDirectory)
+        .where(eq(objectDirectory.id, targetDirectoryId))
+        .limit(1);
+
+      if (!targetRows.length) {
+        return {
+          success: false,
+          error: "Fiche introuvable dans l'annuaire",
+          code: ErrorCodes.NOT_FOUND,
+        };
+      }
+
+      await db.insert(barcodeDirectory).values({
+        id: randomUUID(),
+        barcode: cleanedBarcode,
+        objectDirectoryId: targetDirectoryId,
+        productVariantId: null, // le code identifie la fiche, pas la variante
+      });
+    }
+
+    // 4. Invalider le cache du scan (le négatif caché ment désormais —
+    // la liaison vient de changer la vérité). Idempotent : noop aussi,
+    // le cache peut contenir un négatif périmé même si la liaison
+    // existait déjà.
+    scanCache.delete(cleanedBarcode);
+
+    return {
+      success: true,
+      data: { linked: plan.action === "link" },
+    };
+  } catch (error) {
+    console.error("[DirectoryService] Erreur linkBarcodeToDirectory:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la liaison du code-barres",
+      code: ErrorCodes.INTERNAL_ERROR,
+    };
+  }
+}

@@ -12,7 +12,7 @@
 - Conventions : conventional commits FR (`feat(stock):`…) · travail sur branches dédiées → PR vers `developement` · jamais de push direct sur `main` · review d'Alexis obligatoire avant merge.
 
 ## Liste noire (ne jamais copier, ne jamais toucher sans décision)
-- `content/database_types/` (types résiduels) · `test/translations.test.ts` (test cassé) · `next.config.js` (doublon du `.ts`) · `README.md` (générique create-next-app) · `tsconfig.tsbuildinfo` (artefact commité)
+- `content/database_types/` (types résiduels) · `next.config.js` (doublon du `.ts`) · `README.md` (générique create-next-app) · `tsconfig.tsbuildinfo` (artefact commité)
 
 ## Ne jamais lire ni attacher
 lockfiles, `node_modules/`, `dist/`, `.next/`, fichiers générés, snapshots, `test-results/`, binaires, `.vscode/`

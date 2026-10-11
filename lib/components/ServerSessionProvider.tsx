@@ -1,16 +1,6 @@
 import { getCurrentSession } from "@/lib/utils/auth";
 import { SessionProvider } from "@/context/SessionProvider";
 
-// Type pour la session à passer au client
-interface ServerSession {
-  user: {
-    id: string;
-    email: string;
-    name?: string;
-    role?: string;
-  } | null;
-}
-
 // Wrapper côté serveur pour le SessionProvider
 // Ce composant récupère la session côté serveur et la passe au client
 export async function ServerSessionProvider({
@@ -28,7 +18,6 @@ export async function ServerSessionProvider({
           id: session.user.id,
           email: session.user.email,
           name: session.user.name,
-          role: session.user.role,
         }
       : null,
   };

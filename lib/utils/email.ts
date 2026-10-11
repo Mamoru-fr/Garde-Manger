@@ -30,7 +30,7 @@ export async function sendEmail({
 
   try {
     // Resend v3 - utiliser la méthode sendEmail directement
-    // @ts-ignore - Problème de typage avec Resend, on force l'exécution
+    // @ts-expect-error - Problème de typage avec Resend, on force l'exécution
     const { data, error } = await resend.sendEmail({
       from: 'Garde-Manger <noreply@garde-manger.app>',
       to,
