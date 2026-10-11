@@ -32,11 +32,11 @@ export const auth = betterAuth({
   // Authentification par email/mot de passe
   emailAndPassword: {
     enabled: true,
-    // Définir un rôle par défaut pour les nouveaux utilisateurs
-    defaultRole: "user",
-    // Rediriger vers /installations après connexion réussie
-    signInCallbackUrl: "/installations",
-    signUpCallbackUrl: "/installations",
+    // Note : le rôle par défaut "user" est posé par la base
+    // (lib/db/schema.ts — userRoleEnum .default("user")), pas par Better-Auth.
+    // Les redirections post-login sont gérées par le callbackURL passé au
+    // authClient (lib/auth/auth-client.ts) — il n'existe pas d'option serveur
+    // signInCallbackUrl/signUpCallbackUrl dans Better-Auth.
   },
 
   // Vérification d'email
@@ -73,6 +73,14 @@ export const auth = betterAuth({
     // ✅ Durée par défaut (30 jours) - sera prolongée à 1 an pour les PWAs via middleware
     maxAge: 86400 * 30, // 30 jours
     updateAge: 86400 * 15, // ✅ 15 jours (rafraîchit le cookie toutes les 2 semaines)
+    // Cache officiel Better-Auth (doc : optimizing for performance) : la session
+    // voyage dans un cookie signé pendant 5 min → getSession ne tape plus en base
+    // à chaque requête. C'est ce cache natif qui remplace l'ancien cache de module
+    // de lib/utils/auth.ts (bug : valeur figée pour toute la vie du process).
+    cookieCache: {
+      enabled: true,
+      maxAge: 300, // 5 minutes
+    },
     // ⭐ Configuration adaptée pour PWA et développement local ⭐
     cookieOptions: {
       sameSite: "lax",
@@ -86,13 +94,11 @@ export const auth = betterAuth({
 
   // Plugins pour Next.js - Essentiel pour gérer les cookies
   plugins: [nextCookies()],
-  
-  // Configuration pour Next.js et Better-Auth
-  framework: {
-    nextjs: {
-      basePath: "/api/auth",
-    },
-  },
+
+  // Note : le chemin /api/auth n'est PAS configurable ici — Better-Auth n'a pas
+  // d'option "framework". C'est le handler monté dans app/api/auth/[...all]/route.ts
+  // qui fait foi (toNextJsHandler), et le client (createAuthClient) le connaît
+  // par défaut. L'ancien bloc `framework.nextjs.basePath` était ignoré par la lib.
   // ⭐ Configuration supplémentaire pour Vercel ⭐
   // URL de base pour les requêtes API (obligatoire en production)
   url: process.env.NEXT_BETTER_AUTH_URL || process.env.NEXT_PUBLIC_VERCEL_URL,

@@ -1,34 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { signup } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 
+// Inscription via la chaîne ACS : action → contrôleur → service → Better-Auth.
+// La brève vérification (Zod) est faite par l'action, la vérification poussée
+// par le contrôleur, et c'est Better-Auth qui crée le compte, la session et
+// envoie l'email de vérification (sendOnSignUp dans la config).
+
 export default function SignUpForm() {
-  const router = useRouter();
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Soumettre le formulaire
+  // Soumettre le formulaire — l'action redirige vers /installations en cas
+  // de succès.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
-    
+
     const formData = new FormData(e.currentTarget);
     const result = await signup(null, formData);
-    
+
     if (!result.success) {
       setMessage({
         text: result.error || "Erreur lors de l'inscription",
         type: "error",
       });
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
+    // En cas de succès : la redirection est portée par l'action
   };
 
   return (

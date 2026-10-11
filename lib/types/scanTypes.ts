@@ -2,6 +2,7 @@
 // TYPES POUR LA FONCTIONNALITÉ DE SCAN
 // ============================================
 
+import type { ScanVariantSummary } from "@/lib/services/ScanResolutionViewService";
 import { ObjectDirectory } from "./index";
 
 // ========== Énumérations ==========
@@ -152,6 +153,9 @@ export interface SimplifiedDirectoryItem {
   productName?: string; // Nom complet du produit
   openFoodFactsId?: string; // ID dans OpenFoodFacts
   isReadOnly?: boolean; // ✅ true si l'objet vient d'OpenFoodFacts (non modifiable)
+  // Chantier 4:2 : la variante identifiée par le code-barres (§5 :
+  // barcode → variante → générique). Absente = fiche legacy → repli générique.
+  variant?: ScanVariantSummary | null;
 }
 
 // Résultat complet du scan avec l'annuaire

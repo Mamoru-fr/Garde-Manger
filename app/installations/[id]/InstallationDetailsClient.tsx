@@ -117,6 +117,10 @@ export default function InstallationDetailsClient({
   const [selectedItem, setSelectedItem] = useState<StockItemWithExpiryStatus | null>(null);
   const [isMoving, setIsMoving] = useState(false);
   const [objects, setObjects] = useState<InstallationObject[]>(initialObjects);
+  // Horodatage figé au montage : les calculs d'expiration du rendu restent
+  // purs (React Compiler). L'ancien Date.now()/new Date() dans le JSX
+  // invalidait le rendu à chaque frame.
+  const [renderTime] = useState(() => Date.now());
   const [isRefreshingObjects, setIsRefreshingObjects] = useState(false);
 
   // Fonction pour recharger les objets de l'installation via Server Action
@@ -407,14 +411,14 @@ export default function InstallationDetailsClient({
                     installationName: installation?.name || "",
                     isReadOnly: false, // ✅ Forcé à false pour permettre la gestion de stock dans l'installation
                     hasEditPermission: userRole !== "viewer", // ✅ Ajouté (basé sur le rôle)
-                    isExpired: obj.expiryDate ? new Date(obj.expiryDate) < new Date() : false,
+                    isExpired: obj.expiryDate ? new Date(obj.expiryDate) < new Date(renderTime) : false,
                     expiryStatus: obj.expiryDate ? (
-                      new Date(obj.expiryDate) < new Date() ? "expired" : 
-                      new Date(obj.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? "warning" : "normal"
+                      new Date(obj.expiryDate) < new Date(renderTime) ? "expired" : 
+                      new Date(obj.expiryDate) <= new Date(renderTime + 30 * 24 * 60 * 60 * 1000) ? "warning" : "normal"
                     ) : "no_date",
-                    daysUntilExpiry: obj.expiryDate ? Math.floor((new Date(obj.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
-                    createdAt: new Date(), // ✅ Ajouté (valeur par défaut)
-                    updatedAt: new Date(), // ✅ Ajouté (valeur par défaut)
+                    daysUntilExpiry: obj.expiryDate ? Math.floor((new Date(obj.expiryDate).getTime() - renderTime) / (1000 * 60 * 60 * 24)) : null,
+                    createdAt: new Date(renderTime), // ✅ Ajouté (valeur par défaut)
+                    updatedAt: new Date(renderTime), // ✅ Ajouté (valeur par défaut)
                   }}
                   onDetailsClick={handleItemClick}
                 />

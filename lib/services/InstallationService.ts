@@ -28,6 +28,22 @@ export async function createInstallationService(
   ownerId: string
 ): Promise<ActionResponse<{ installationId: string }>> {
   try {
+    // Le propriétaire doit exister (round de fermeture : vérification
+    // déléguée par le contrôleur, plus un seul accès DB côté contrôleur)
+    const ownerExists = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, ownerId))
+      .limit(1);
+
+    if (!ownerExists.length) {
+      return {
+        success: false,
+        error: "Utilisateur non trouvé",
+        code: ErrorCodes.USER_NOT_FOUND,
+      };
+    }
+
     const id = randomUUID();
 
     const newInstallation = await db
@@ -86,6 +102,22 @@ export async function getUserInstallationsService(
   }[];
 }>> {
   try {
+    // L'utilisateur doit exister (round de fermeture : vérification
+    // déléguée par le contrôleur, plus un seul accès DB côté contrôleur)
+    const userExists = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!userExists.length) {
+      return {
+        success: false,
+        error: "Utilisateur non trouvé",
+        code: ErrorCodes.USER_NOT_FOUND,
+      };
+    }
+
     const userInstallationsData = await db
       .select({
         userInstallationId: userInstallations.installationId,
@@ -572,6 +604,160 @@ export async function getInstallationObjectsService(
     return {
       success: false,
       error: "Erreur lors de la récupération des objets",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// ============================================================================
+// MEMBRES (bloc 3 — round de fermeture) : la logique d'ajout/suppression de
+// membres vit ici. Le contrôleur ne fait plus aucun accès DB.
+// ============================================================================
+
+// Ajouter un membre par son email (réservé au propriétaire de l'installation)
+export async function addMemberByEmailService(
+  installationId: string,
+  requesterId: string,
+  userEmail: string,
+  role: "owner" | "editor" | "viewer"
+): Promise<ActionResponse<{ userInstallationId: string }>> {
+  try {
+    // 1. L'installation existe
+    const installation = await db
+      .select()
+      .from(installationsTable)
+      .where(eq(installationsTable.id, installationId))
+      .limit(1);
+
+    if (!installation.length) {
+      return {
+        success: false,
+        error: "Installation non trouvée",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // 2. Seul le propriétaire peut ajouter des membres
+    if (installation[0].ownerId !== requesterId) {
+      return {
+        success: false,
+        error: "Seul le propriétaire peut ajouter des membres",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // 3. Utilisateur cible résolu par email
+    const targetUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userEmail))
+      .limit(1);
+
+    if (!targetUser.length) {
+      return {
+        success: false,
+        error: "Utilisateur non trouvé",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // 4. Pas déjà membre (et() SQL, jamais `&&` JS qui ne teste que la
+    // dernière condition — bug latent corrigé au passage)
+    const existingMember = await db
+      .select()
+      .from(userInstallations)
+      .where(
+        and(
+          eq(userInstallations.installationId, installationId),
+          eq(userInstallations.userId, targetUser[0].id)
+        )
+      )
+      .limit(1);
+
+    if (existingMember.length) {
+      return {
+        success: false,
+        error: "Cet utilisateur est déjà membre de cette installation",
+        code: ErrorCodes.CONFLICT,
+      };
+    }
+
+    // 5. Insertion (réutilisation du service bas niveau)
+    return addUserToInstallationService({
+      installationId,
+      userId: targetUser[0].id,
+      role,
+    });
+  } catch (error) {
+    console.error("[InstallationService] Erreur lors de l'ajout du membre:", error);
+    return {
+      success: false,
+      error: "Erreur lors de l'ajout du membre",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+
+// Supprimer un membre (réservé au propriétaire de l'installation)
+export async function removeMemberService(
+  installationId: string,
+  requesterId: string,
+  userId: string
+): Promise<ActionResponse<{ userInstallationId: string }>> {
+  try {
+    // 1. L'installation existe
+    const installation = await db
+      .select()
+      .from(installationsTable)
+      .where(eq(installationsTable.id, installationId))
+      .limit(1);
+
+    if (!installation.length) {
+      return {
+        success: false,
+        error: "Installation non trouvée",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // 2. Seul le propriétaire peut supprimer des membres
+    if (installation[0].ownerId !== requesterId) {
+      return {
+        success: false,
+        error: "Seul le propriétaire peut supprimer des membres",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    // 3. Le membre existe dans cette installation (and() SQL)
+    const member = await db
+      .select()
+      .from(userInstallations)
+      .where(
+        and(
+          eq(userInstallations.installationId, installationId),
+          eq(userInstallations.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (!member.length) {
+      return {
+        success: false,
+        error: "Membre non trouvé dans cette installation",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // 4. Suppression (réutilisation du service bas niveau)
+    return removeUserFromInstallationService({ installationId, userId });
+  } catch (error) {
+    console.error("[InstallationService] Erreur lors de la suppression du membre:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la suppression du membre",
       code: ErrorCodes.INTERNAL_ERROR,
       details: error,
     };

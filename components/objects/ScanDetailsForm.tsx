@@ -14,8 +14,13 @@ import {
   X,
   Clock,
   AlertTriangle,
+  Search,
 } from "lucide-react";
 import {addScannedObject, adjustObjectQuantity} from "@/lib/actions/ObjectActions";
+import {correctVariantFromScan} from "@/lib/actions/VariantActions";
+import {searchProductsByName, linkBarcodeToDirectory} from "@/lib/actions/DirectoryActions";
+import {buildScanCorrectionPlan} from "@/lib/services/ScanResolutionViewService";
+import Link from "next/link";
 import {SimplifiedDirectoryItem} from "@/lib/types/scanTypes";
 import NutriscoreBadge from "@/components/objects/NutriscoreBadge";
 import styles from "./ScanDetailsForm.module.css";
@@ -60,6 +65,23 @@ export default function ScanDetailsForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Round 3 du 4:2 (11/10) — liaison code-barres → fiche existante :
+  // le produit est inconnu (directoryItem null), l'utilisateur peut le
+  // retrouver dans l'annuaire. La fiche choisie remplace alors la vue
+  // « objet inconnu » : header, préremplissage et correction R2
+  // travaillent sur elle, et le submit ira chez elle (addScannedObject
+  // retrouve la ligne barcode_directory fraîchement écrite).
+  const [linkedItem, setLinkedItem] = useState<SimplifiedDirectoryItem | null>(null);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkResults, setLinkResults] = useState<SimplifiedDirectoryItem[]>([]);
+  const [linkSearched, setLinkSearched] = useState(false);
+  const [isLinkSearching, setIsLinkSearching] = useState(false);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // La fiche effective : celle du scan, sinon celle liée à la main.
+  const effectiveItem = directoryItem ?? linkedItem;
+
   // Sauvegarder le dernier emplacement utilisé
   useEffect(() => {
     if (formData.location) {
@@ -81,10 +103,95 @@ export default function ScanDetailsForm({
     setFormData(prev => ({...prev, [name]: value}));
   }, []);
 
+  // Rechercher une fiche existante par son nom (action existante —
+  // zéro nouvelle requête). Seules les fiches LOCALES sont proposées :
+  // barcode === "" = marqueur d'annuaire (DirectoryService l.432) ; un
+  // résultat OFF non résolu n'a pas de fiche locale à lier.
+  const handleLinkSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = linkSearch.trim();
+    if (!trimmed || isLinkSearching) return;
+    setIsLinkSearching(true);
+    setLinkError(null);
+    setLinkSearched(false);
+    try {
+      const result = await searchProductsByName(trimmed, 10);
+      if (result.success && result.data) {
+        setLinkResults(result.data.filter((r) => r.barcode === ""));
+      } else {
+        setLinkResults([]);
+      }
+      setLinkSearched(true);
+    } catch (err) {
+      console.error("[ScanDetailsForm] Erreur recherche liaison:", err);
+      setLinkError("Erreur lors de la recherche dans l'annuaire");
+    } finally {
+      setIsLinkSearching(false);
+    }
+  };
+
+  // Lier le code-barres scanné à la fiche choisie. Le service invalide
+  // le scanCache (le négatif était caché — sans ça, le submit
+  // re-créerait une fiche). Conflit → message explicite, la fusion
+  // de fiches (R4/R5) reste LE geste pour déplacer un code.
+  const handleLinkSelect = async (item: SimplifiedDirectoryItem) => {
+    setLinkingId(item.id);
+    setLinkError(null);
+    try {
+      const result = await linkBarcodeToDirectory(barcode, item.id);
+      if (!result.success) {
+        setLinkError(result.error || "La liaison a échoué");
+        return;
+      }
+      console.log("[ScanDetailsForm] Code-barres lié à la fiche:", item.name);
+      setLinkedItem(item);
+      // Préremplir le formulaire avec la fiche choisie
+      setFormData(prev => ({
+        ...prev,
+        name: item.name || prev.name,
+        brand: item.brand || prev.brand,
+        category: item.category || prev.category,
+      }));
+      setLinkResults([]);
+      setLinkSearch("");
+      setLinkSearched(false);
+    } catch (err) {
+      console.error("[ScanDetailsForm] Erreur liaison:", err);
+      setLinkError("Une erreur inattendue est survenue lors de la liaison");
+    } finally {
+      setLinkingId(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+
+    // R2 4:2 (option B — Alexis 06/10) : correction de fiche au submit,
+    // AVANT l'ajout. BONUS : son échec n'empêche jamais l'ajout.
+    // Décisions 11/10 : nom → générique, marque → variante (repli
+    // générique), le verrou OFF est passé (cible du geste).
+    const scannedVariant = effectiveItem?.variant ?? null;
+    const correctionPlan = buildScanCorrectionPlan({
+      currentName: effectiveItem?.name ?? "",
+      submittedName: formData.name,
+      currentBrand: scannedVariant?.brand ?? effectiveItem?.brand ?? null,
+      submittedBrand: formData.brand,
+      hasVariant: Boolean(scannedVariant),
+    });
+    if (correctionPlan.nameChanged || correctionPlan.brandChanged) {
+      try {
+        await correctVariantFromScan(
+          barcode,
+          formData.name.trim(),
+          formData.brand.trim()
+        );
+        console.log("[ScanDetailsForm] Fiche corrigée depuis le scan");
+      } catch (corrErr) {
+        console.error("[ScanDetailsForm] Correction échouée (bonus, l'ajout continue) :", corrErr);
+      }
+    }
 
     try {
       // Ajouter ou mettre à jour
@@ -98,7 +205,7 @@ export default function ScanDetailsForm({
             {
               name: formData.name || undefined,
               category: formData.category || undefined,
-              description: directoryItem?.description || undefined,
+              description: effectiveItem?.description || undefined,
               brand: formData.brand || undefined,
               expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
               location: formData.location?.trim() || undefined
@@ -160,10 +267,10 @@ export default function ScanDetailsForm({
         {/* En-tête avec infos produit */}
         <div className={styles.productHeader}>
           <div className={styles.productImageContainer}>
-            {directoryItem?.imageUrl ? (
+            {effectiveItem?.imageUrl ? (
               <img
-                src={directoryItem.imageUrl}
-                alt={directoryItem.name || "Produit"}
+                src={effectiveItem.imageUrl}
+                alt={effectiveItem.name || "Produit"}
                 className={styles.productImage}
               />
             ) : (
@@ -174,32 +281,32 @@ export default function ScanDetailsForm({
           </div>
 
           <div className={styles.productInfo}>
-            {directoryItem?.isReadOnly ? (
+            {effectiveItem?.isReadOnly ? (
               // Affichage en lecture seule pour les objets OpenFoodFacts
               <>
                 <div className={styles.productNameRow}>
                   <h2 id="scan-details-title" className={styles.productName}>
-                    {directoryItem?.name || "Objet inconnu"}
+                    {effectiveItem?.name || "Objet inconnu"}
                   </h2>
-                  {directoryItem?.nutriscore && (
-                    <NutriscoreBadge score={directoryItem.nutriscore} size="small" />
+                  {effectiveItem?.nutriscore && (
+                    <NutriscoreBadge score={effectiveItem.nutriscore} size="small" />
                   )}
                 </div>
 
-                {directoryItem?.brand && (
+                {effectiveItem?.brand && (
                   <p className={styles.productBrand}>
-                    <strong>Marque:</strong> {directoryItem.brand}
+                    <strong>Marque:</strong> {effectiveItem.brand}
                   </p>
                 )}
-                {directoryItem?.category && (
+                {effectiveItem?.category && (
                   <p className={styles.productCategory}>
-                    <strong>Catégorie:</strong> {directoryItem.category}
+                    <strong>Catégorie:</strong> {effectiveItem.category}
                   </p>
                 )}
-                {directoryItem?.openFoodFactsId && (
+                {effectiveItem?.openFoodFactsId && (
                   <p className={styles.productOFF}>
                     <a
-                      href={`https://openfoodfacts.org/product/${directoryItem.openFoodFactsId}`}
+                      href={`https://openfoodfacts.org/product/${effectiveItem.openFoodFactsId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.offLink}
@@ -268,10 +375,10 @@ export default function ScanDetailsForm({
                   </div>
                 </div>
 
-                {directoryItem?.openFoodFactsId && (
+                {effectiveItem?.openFoodFactsId && (
                   <p className={styles.productOFF}>
                     <a
-                      href={`https://openfoodfacts.org/product/${directoryItem.openFoodFactsId}`}
+                      href={`https://openfoodfacts.org/product/${effectiveItem.openFoodFactsId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.offLink}
@@ -302,9 +409,68 @@ export default function ScanDetailsForm({
       </div>
 
       {/* Message d'édition */}
-      {!directoryItem?.isReadOnly && (
+      {!effectiveItem?.isReadOnly && (
         <div className={styles.editMessage}>
           ✏️ Personnalisez le nom, la marque et la catégorie ci-dessus
+        </div>
+      )}
+
+      {/* Round 3 du 4:2 (11/10) : produit inconnu → lier le code-barres
+          à une fiche existante de l'annuaire (« c'est ce produit-là »). */}
+      {!effectiveItem && (
+        <div className={styles.linkSection}>
+          <p className={styles.linkTitle}>Ce produit existe déjà dans votre annuaire ?</p>
+          <p className={styles.linkHint}>
+            Liez ce code-barres à une fiche existante au lieu d'en créer une nouvelle.
+          </p>
+          <form onSubmit={handleLinkSearch} className={styles.linkSearchForm}>
+            <input
+              type="search"
+              value={linkSearch}
+              onChange={(e) => setLinkSearch(e.target.value)}
+              className={styles.linkInput}
+              placeholder="Rechercher par nom…"
+              aria-label="Rechercher une fiche existante"
+            />
+            <button
+              type="submit"
+              className={styles.linkSearchButton}
+              disabled={isLinkSearching || !linkSearch.trim()}
+            >
+              <Search size={16} />
+              {isLinkSearching ? "Recherche…" : "Rechercher"}
+            </button>
+          </form>
+          {linkResults.length > 0 && (
+            <ul className={styles.linkResults}>
+              {linkResults.map((r) => (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleLinkSelect(r)}
+                    className={styles.linkResultItem}
+                    disabled={linkingId !== null}
+                  >
+                    <span className={styles.linkResultName}>{r.name}</span>
+                    {(r.brand || r.description) && (
+                      <span className={styles.linkResultMeta}>
+                        {[r.brand, r.description].filter(Boolean).join(" — ")}
+                      </span>
+                    )}
+                    <span className={styles.linkResultAction}>
+                      {linkingId === r.id ? "Liaison…" : "C'est ce produit"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {linkSearched && linkResults.length === 0 && !isLinkSearching && (
+            <p className={styles.linkEmpty}>
+              Aucune fiche locale trouvée — remplissez le formulaire ci-dessous pour en créer une nouvelle.
+            </p>
+          )}
+          {linkError && <p className={styles.linkError}>{linkError}</p>}
         </div>
       )}
 
@@ -313,6 +479,36 @@ export default function ScanDetailsForm({
         <div className={styles.errorMessage}>
           <AlertTriangle size={18} />
           {error}
+        </div>
+      )}
+
+      {/* R2 4:2 (Q3 Alexis 06/10) : bloc informatif de la variante identifiée
+          par le code-barres — marque, Nutri-Score, image et lien fiche. */}
+      {effectiveItem?.variant && (
+        <div className={styles.variantInfo}>
+          {effectiveItem.variant.imageUrl && (
+            <img
+              src={effectiveItem.variant.imageUrl}
+              alt=""
+              className={styles.variantImage}
+              loading="lazy"
+            />
+          )}
+          <div className={styles.variantText}>
+            <span className={styles.variantLabel}>Variante identifiée par le code-barres</span>
+            {effectiveItem.variant.brand && (
+              <span className={styles.variantBrand}>{effectiveItem.variant.brand}</span>
+            )}
+            {effectiveItem.variant.nutriscore && (
+              <NutriscoreBadge score={effectiveItem.variant.nutriscore} size="small" />
+            )}
+          </div>
+          <Link
+            href={"/stock/" + effectiveItem.id + "/variantes/" + effectiveItem.variant.id}
+            className={styles.variantLink}
+          >
+            Voir la fiche variante
+          </Link>
         </div>
       )}
 
@@ -378,27 +574,14 @@ export default function ScanDetailsForm({
           </div>
         </fieldset>
 
+        {/* Optimisation mobile (option A, Alexis 06/10) : la péremption
+            reste visible (cœur du produit), les champs de détail sont
+            repliés derrière le summary — un scan courant = quantité +
+            valider, sans scroller. */}
         <fieldset className={styles.formSection}>
           <legend className={styles.formSectionTitle}>Dates</legend>
 
           <div className={styles.formGrid}>
-            {/* Date d'achat */}
-            <div className={styles.formGroup}>
-              <label htmlFor="purchaseDate" className={styles.formLabel}>
-                <Calendar size={16} />
-                Date d'achat
-              </label>
-              <input
-                type="date"
-                id="purchaseDate"
-                name="purchaseDate"
-                value={formData.purchaseDate}
-                onChange={handleDateChange}
-                className={styles.formInput}
-                max={today}
-              />
-            </div>
-
             {/* Date de péremption */}
             <div className={styles.formGroup}>
               <label htmlFor="expiryDate" className={styles.formLabel}>
@@ -427,10 +610,32 @@ export default function ScanDetailsForm({
           </div>
         </fieldset>
 
-        <fieldset className={styles.formSection}>
-          <legend className={styles.formSectionTitle}>Informations supplémentaires</legend>
+        <details className={styles.optionalDetails}>
+          <summary className={styles.optionalSummary}>
+            Plus de détails (achat, lot, prix, notes)
+          </summary>
 
-          <div className={styles.formGrid}>
+          <fieldset className={styles.formSection}>
+            <legend className={styles.formSectionTitle}>Informations supplémentaires</legend>
+
+            <div className={styles.formGrid}>
+            {/* Date d'achat */}
+            <div className={styles.formGroup}>
+              <label htmlFor="purchaseDate" className={styles.formLabel}>
+                <Calendar size={16} />
+                Date d'achat
+              </label>
+              <input
+                type="date"
+                id="purchaseDate"
+                name="purchaseDate"
+                value={formData.purchaseDate}
+                onChange={handleDateChange}
+                className={styles.formInput}
+                max={today}
+              />
+            </div>
+
             {/* Numéro de lot */}
             <div className={styles.formGroup}>
               <label htmlFor="lotNumber" className={styles.formLabel}>
@@ -488,7 +693,8 @@ export default function ScanDetailsForm({
               placeholder="Ex: Acheté en promo, ouvert déjà, à consommer rapidement..."
             />
           </div>
-        </fieldset>
+          </fieldset>
+        </details>
 
         {/* Boutons d'action */}
         <div className={styles.formActions}>

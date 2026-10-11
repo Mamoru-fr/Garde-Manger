@@ -6,8 +6,9 @@
 
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import { getCurrentSession } from "@/lib/utils/auth";
-import { searchInDirectory, searchByName, isValidBarcode, cleanBarcode } from "@/lib/services/DirectoryService";
+import { searchInDirectory, searchByName, searchByNameLocal, isValidBarcode, cleanBarcode, linkBarcodeToDirectoryService } from "@/lib/services/DirectoryService";
 import { ActionResponse } from "@/lib/types";
+import { SearchProductsByNameSchema } from "@/lib/validations/object";
 
 /**
  * Cherche un produit dans l'annuaire par code-barres
@@ -60,24 +61,53 @@ export async function searchProductInDirectory(barcode: string): Promise<ActionR
 }
 
 /**
- * Cherche des produits par nom (pour autocomplétion)
+ * Cherche des produits par nom (annuaire local d'abord, OpenFoodFacts en repli)
+ * Recherche manuelle sans scanner : l'annuaire object_directory est interrogé
+ * sur le nom et la marque ; OpenFoodFacts prend le relais si rien en local.
  */
 export async function searchProductsByName(query: string, limit: number = 10): Promise<ActionResponse<SimplifiedDirectoryItem[]>> {
   try {
-    if (!query || query.trim().length < 2) {
+    // Vérifier la session : les données de l'annuaire sont réservées aux utilisateurs connectés
+    const session = await getCurrentSession();
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: "UNAUTHORIZED",
+      };
+    }
+
+    // Validation stricte des entrées (obligation de couche : la porte d'entrée valide toujours)
+    const parsed = SearchProductsByNameSchema.safeParse({ query, limit });
+
+    if (!parsed.success) {
       return {
         success: true,
         data: [],
-        error: "Requête trop courte",
+        error: "Requête trop courte ou invalide",
         code: "VALIDATION_ERROR",
       };
     }
 
-    const items = await searchByName(query, limit);
-    
+    const { query: cleanQuery, limit: cleanLimit } = parsed.data;
+
+    // 1. Recherche locale dans l'annuaire (nom + marque)
+    const localItems = await searchByNameLocal(cleanQuery, cleanLimit);
+
+    if (localItems.length > 0) {
+      return {
+        success: true,
+        data: localItems,
+      };
+    }
+
+    // 2. Repli sur OpenFoodFacts si l'annuaire local ne connaît pas le produit
+    const offItems = await searchByName(cleanQuery, cleanLimit);
+
     return {
       success: true,
-      data: items,
+      data: offItems,
     };
   } catch (error) {
     console.error("Erreur recherche par nom:", error);
@@ -187,6 +217,61 @@ export async function getBarcodeMetadata(barcode: string): Promise<ActionRespons
     return {
       success: false,
       error: "Erreur lors de la récupération",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
+/**
+ * Lie un code-barres à une fiche existante de l'annuaire (round 3 du
+ * chantier 4:2 — 11/10) : scanner un code inconnu et dire « c'est ce
+ * produit-là ». Porte d'entrée : session + validation, zéro DB
+ * (invariant bloc 3 — la logique vit dans DirectoryService).
+ */
+export async function linkBarcodeToDirectory(
+  barcode: string,
+  directoryId: string
+): Promise<ActionResponse<{ linked: boolean }>> {
+  try {
+    // Les données de l'annuaire sont réservées aux utilisateurs connectés
+    const session = await getCurrentSession();
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: "UNAUTHORIZED",
+      };
+    }
+
+    // Validation de la porte d'entrée (obligation de couche)
+    if (!barcode || !barcode.trim() || !directoryId || !directoryId.trim()) {
+      return {
+        success: false,
+        error: "Code-barres ou fiche cible manquant",
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    const result = await linkBarcodeToDirectoryService(barcode, directoryId);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Erreur lors de la liaison",
+        code: result.code || "INTERNAL_ERROR",
+      };
+    }
+
+    return {
+      success: true,
+      data: { linked: result.data?.linked ?? false },
+    };
+  } catch (error) {
+    console.error("Erreur liaison code-barres → fiche:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la liaison du code-barres",
       code: "INTERNAL_ERROR",
     };
   }

@@ -6,6 +6,11 @@ import { forgotPassword } from "@/lib/actions/AuthActions";
 import { Input, Button, Form, FormField, FormActions } from "@/components/shared";
 import { CheckCircle } from "lucide-react";
 
+// Demande de réinitialisation via la chaîne ACS :
+// action → contrôleur → service → Better-Auth (requestPasswordReset).
+// En cas de succès, pas de redirection : le formulaire affiche l'écran de
+// confirmation (l'ancienne version redirigeait vers une page inexistante).
+
 export default function ForgotPasswordForm() {
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -14,10 +19,10 @@ export default function ForgotPasswordForm() {
     e.preventDefault();
     setMessage(null);
     setIsLoading(true);
-    
+
     const formData = new FormData(e.currentTarget);
     const result = await forgotPassword(null, formData);
-    
+
     if (!result.success) {
       setMessage({
         text: result.error || "Erreur lors de la demande",
@@ -29,7 +34,7 @@ export default function ForgotPasswordForm() {
         type: "success",
       });
     }
-    
+
     setIsLoading(false);
   };
 

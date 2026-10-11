@@ -1,0 +1,30 @@
+/* ============================================
+   LE BOUTON « FUSIONNER DEUX FICHES » (bloc 4, round 5)
+   Il vit sur le header brun de la page /stock — même
+   livrée que le bouton « Scanner un objet » du header
+   (fond clair #fdf6e8, texte brun #8b4513), pour ne
+   pas réinventer une palette.
+   ============================================ */
+
+.toolButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fdf6e8;
+  color: #8b4513;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.toolButton:hover {
+  background: #f0e6d8;
+  color: #8b4513;
+  transform: translateY(-1px);
+}
