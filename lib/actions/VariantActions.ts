@@ -156,3 +156,44 @@ export async function mergeGenerics(
     };
   }
 }
+
+
+/**
+ * CORRIGER LA FICHE DEPUIS LE SCAN (R2 4:2, option B Alexis 06/10) :
+ * appelée au submit AVANT l'ajout — la correction est un BONUS, son échec
+ * n'empêche jamais l'ajout (try/catch côté client). Nom → générique,
+ * marque → variante (décisions Alexis 11/10).
+ */
+export async function correctVariantFromScan(
+  barcode: string,
+  correctedName: string | null,
+  correctedBrand: string | null
+): Promise<ActionResponse<{ corrected: boolean }>> {
+  try {
+    const headers = await getAuthHeaders();
+    const session = await auth.api.getSession({ headers });
+
+    if (!session?.user) {
+      return {
+        success: false,
+        error: "Non autorisé",
+        code: ErrorCodes.UNAUTHORIZED,
+      };
+    }
+
+    return await VariantController.correctVariantFromScan(
+      barcode,
+      correctedName,
+      correctedBrand
+    );
+  } catch (error) {
+    console.error("[VariantActions] Erreur dans correctVariantFromScan:", error);
+    return {
+      success: false,
+      error: "Une erreur est survenue",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+

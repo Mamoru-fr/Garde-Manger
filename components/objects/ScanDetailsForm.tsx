@@ -16,6 +16,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import {addScannedObject, adjustObjectQuantity} from "@/lib/actions/ObjectActions";
+import {correctVariantFromScan} from "@/lib/actions/VariantActions";
+import {buildScanCorrectionPlan} from "@/lib/services/ScanResolutionViewService";
+import Link from "next/link";
 import {SimplifiedDirectoryItem} from "@/lib/types/scanTypes";
 import NutriscoreBadge from "@/components/objects/NutriscoreBadge";
 import styles from "./ScanDetailsForm.module.css";
@@ -85,6 +88,31 @@ export default function ScanDetailsForm({
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+
+    // R2 4:2 (option B — Alexis 06/10) : correction de fiche au submit,
+    // AVANT l'ajout. BONUS : son échec n'empêche jamais l'ajout.
+    // Décisions 11/10 : nom → générique, marque → variante (repli
+    // générique), le verrou OFF est passé (cible du geste).
+    const scannedVariant = directoryItem?.variant ?? null;
+    const correctionPlan = buildScanCorrectionPlan({
+      currentName: directoryItem?.name ?? "",
+      submittedName: formData.name,
+      currentBrand: scannedVariant?.brand ?? directoryItem?.brand ?? null,
+      submittedBrand: formData.brand,
+      hasVariant: Boolean(scannedVariant),
+    });
+    if (correctionPlan.nameChanged || correctionPlan.brandChanged) {
+      try {
+        await correctVariantFromScan(
+          barcode,
+          formData.name.trim(),
+          formData.brand.trim()
+        );
+        console.log("[ScanDetailsForm] Fiche corrigée depuis le scan");
+      } catch (corrErr) {
+        console.error("[ScanDetailsForm] Correction échouée (bonus, l'ajout continue) :", corrErr);
+      }
+    }
 
     try {
       // Ajouter ou mettre à jour
@@ -313,6 +341,36 @@ export default function ScanDetailsForm({
         <div className={styles.errorMessage}>
           <AlertTriangle size={18} />
           {error}
+        </div>
+      )}
+
+      {/* R2 4:2 (Q3 Alexis 06/10) : bloc informatif de la variante identifiée
+          par le code-barres — marque, Nutri-Score, image et lien fiche. */}
+      {directoryItem?.variant && (
+        <div className={styles.variantInfo}>
+          {directoryItem.variant.imageUrl && (
+            <img
+              src={directoryItem.variant.imageUrl}
+              alt=""
+              className={styles.variantImage}
+              loading="lazy"
+            />
+          )}
+          <div className={styles.variantText}>
+            <span className={styles.variantLabel}>Variante identifiée par le code-barres</span>
+            {directoryItem.variant.brand && (
+              <span className={styles.variantBrand}>{directoryItem.variant.brand}</span>
+            )}
+            {directoryItem.variant.nutriscore && (
+              <NutriscoreBadge score={directoryItem.variant.nutriscore} size="small" />
+            )}
+          </div>
+          <Link
+            href={"/stock/" + directoryItem.id + "/variantes/" + directoryItem.variant.id}
+            className={styles.variantLink}
+          >
+            Voir la fiche variante
+          </Link>
         </div>
       )}
 

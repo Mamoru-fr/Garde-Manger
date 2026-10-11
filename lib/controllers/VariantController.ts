@@ -16,6 +16,7 @@ import {
   reassignVariantToGenericService,
 } from "@/lib/services/VariantQueryService";
 import { mergeGenericsService } from "@/lib/services/MergeQueryService";
+import { correctVariantFromScanService } from "@/lib/services/VariantQueryService";
 import type { MergeGenericsResult } from "@/lib/services/MergeQueryService";
 import type { VariantDetails, VariantLine } from "@/lib/services/VariantViewService";
 
@@ -143,6 +144,57 @@ export class VariantController {
       );
     } catch (error) {
       console.error("[VariantController] Erreur dans mergeGenerics:", error);
+      return {
+        success: false,
+        error: "Une erreur est survenue",
+        code: ErrorCodes.INTERNAL_ERROR,
+        details: error,
+      };
+    }
+  }
+
+  // Correction de fiche au scan (R2 4:2, option B Alexis 06/10) : nom →
+  // générique, marque → variante (repli générique), passe le verrou OFF
+  // (décision Alexis 11/10). Validation bornée puis délégation.
+  static async correctVariantFromScan(
+    barcode: string,
+    correctedName: string | null,
+    correctedBrand: string | null
+  ): Promise<ActionResponse<{ corrected: boolean }>> {
+    try {
+      if (!barcode || !barcode.trim()) {
+        return {
+          success: false,
+          error: "Le code-barres est requis",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+      const name = correctedName?.trim() ?? "";
+      if (name !== "" && (name.length < 2 || name.length > 150)) {
+        return {
+          success: false,
+          error: "Le nom corrigé doit contenir entre 2 et 150 caractères",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+      const brand = correctedBrand?.trim() ?? "";
+      if (brand.length > 100) {
+        return {
+          success: false,
+          error: "La marque corrigée ne peut pas dépasser 100 caractères",
+          code: ErrorCodes.VALIDATION_ERROR,
+        };
+      }
+      return await correctVariantFromScanService(
+        barcode.trim(),
+        name === "" ? null : name,
+        brand === "" ? null : brand
+      );
+    } catch (error) {
+      console.error(
+        "[VariantController] Erreur dans correctVariantFromScan:",
+        error
+      );
       return {
         success: false,
         error: "Une erreur est survenue",

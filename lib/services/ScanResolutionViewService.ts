@@ -132,3 +132,42 @@ export function applyVariantToDirectoryItem<T extends {
     },
   };
 }
+
+
+/**
+ * R2 du chantier 4:2 (11/10) : plan de correction de fiche au scan —
+ * partie PURE (zéro DB), calculée avant l'écriture comme avant l'ajout.
+ * Décisions Alexis du 11/10 : le nom corrigé va sur le GÉNÉRIQUE (seul
+ * porteur du nom — la variante n'en a pas) ; la marque corrigée va sur la
+ * VARIANTE quand elle existe, sinon sur le générique (statu quo Q2 06/10) ;
+ * la correction PASSE le verrou OFF (les fiches mal nommées par
+ * OpenFoodFacts sont précisément la cible du geste). Jamais d'effacement :
+ * un champ soumis vide ne change rien.
+ */
+export interface ScanCorrectionPlan {
+  nameChanged: boolean;
+  brandChanged: boolean;
+  brandTarget: "variant" | "generic";
+}
+
+export function buildScanCorrectionPlan(input: {
+  currentName: string;
+  submittedName: string;
+  currentBrand: string | null;
+  submittedBrand: string;
+  hasVariant: boolean;
+}): ScanCorrectionPlan {
+  const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+  const submittedName = input.submittedName.trim();
+  const submittedBrand = input.submittedBrand.trim();
+
+  return {
+    // Nom : corrigé seulement s'il est rempli ET différent (trim).
+    nameChanged: submittedName !== "" && submittedName !== input.currentName.trim(),
+    // Marque : insensible à la casse ; vide ne corrige jamais.
+    brandChanged: submittedBrand !== "" && norm(submittedBrand) !== norm(input.currentBrand),
+    // La marque corrigée vise la variante si elle existe (décision 11/10).
+    brandTarget: input.hasVariant ? "variant" : "generic",
+  };
+}
+

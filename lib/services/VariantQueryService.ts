@@ -23,6 +23,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/drizzle";
+import { buildScanCorrectionPlan } from "@/lib/services/ScanResolutionViewService";
 import { objectDirectory, productVariants } from "@/lib/db/schema";
 
 import {
@@ -214,3 +215,102 @@ export async function reassignVariantToGenericService(
     };
   }
 }
+
+
+/**
+ * R2 du chantier 4:2 (11/10) : corrige la fiche depuis le scan — le nom sur
+ * le GÉNÉRIQUE (seul porteur du nom), la marque sur la VARIANTE (repli
+ * générique sans variante). PASSE le verrou OFF (décision Alexis 11/10 :
+ * les fiches mal nommées par OpenFoodFacts sont la cible du geste).
+ * Idempotent : rien à écrire → succès, corrected false.
+ */
+export async function correctVariantFromScanService(
+  barcode: string,
+  correctedName: string | null,
+  correctedBrand: string | null
+): Promise<ActionResponse<{ corrected: boolean }>> {
+  try {
+    // 1. Le code-barres dans l'annuaire → fiche + variante éventuelle.
+    const barcodeRows = await db
+      .select({
+        directoryId: barcodeDirectory.objectDirectoryId,
+        variantId: barcodeDirectory.productVariantId,
+      })
+      .from(barcodeDirectory)
+      .where(eq(barcodeDirectory.barcode, barcode))
+      .limit(1);
+
+    if (!barcodeRows.length) {
+      return {
+        success: false,
+        error: "Code-barres introuvable dans l'annuaire",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    const { directoryId, variantId } = barcodeRows[0];
+
+    // 2. État actuel de la fiche générique.
+    const directoryRows = await db
+      .select({ name: objectDirectory.name, brand: objectDirectory.brand })
+      .from(objectDirectory)
+      .where(eq(objectDirectory.id, directoryId))
+      .limit(1);
+
+    if (!directoryRows.length) {
+      return {
+        success: false,
+        error: "Fiche générique introuvable",
+        code: ErrorCodes.NOT_FOUND,
+      };
+    }
+
+    // 3. Le plan (partie pure testée) décide de ce qui change.
+    const plan = buildScanCorrectionPlan({
+      currentName: directoryRows[0].name,
+      submittedName: correctedName ?? "",
+      currentBrand: directoryRows[0].brand,
+      submittedBrand: correctedBrand ?? "",
+      hasVariant: Boolean(variantId),
+    });
+
+    // 4. Écritures relançables, une par cible.
+    if (plan.nameChanged) {
+      await db
+        .update(objectDirectory)
+        .set({ name: (correctedName ?? "").trim(), updatedAt: new Date() })
+        .where(eq(objectDirectory.id, directoryId));
+    }
+    if (plan.brandChanged) {
+      const trimmedBrand = (correctedBrand ?? "").trim();
+      if (plan.brandTarget === "variant" && variantId) {
+        await db
+          .update(productVariants)
+          .set({ brand: trimmedBrand })
+          .where(eq(productVariants.id, variantId));
+      } else {
+        await db
+          .update(objectDirectory)
+          .set({ brand: trimmedBrand, updatedAt: new Date() })
+          .where(eq(objectDirectory.id, directoryId));
+      }
+    }
+
+    return {
+      success: true,
+      data: { corrected: plan.nameChanged || plan.brandChanged },
+    };
+  } catch (error) {
+    console.error(
+      "[VariantQueryService] Erreur dans correctVariantFromScanService:",
+      error
+    );
+    return {
+      success: false,
+      error: "Une erreur est survenue",
+      code: ErrorCodes.INTERNAL_ERROR,
+      details: error,
+    };
+  }
+}
+

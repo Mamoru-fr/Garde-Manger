@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Check, X, ChevronLeft, Barcode, Search } from "lucide-react";
 import { searchProductInDirectory, searchProductsByName } from "@/lib/actions/DirectoryActions";
 import { addObjectToInstallation } from "@/lib/actions/ObjectActions";
+import { correctVariantFromScan } from "@/lib/actions/VariantActions";
+import { buildScanCorrectionPlan } from "@/lib/services/ScanResolutionViewService";
+import NutriscoreBadge from "@/components/objects/NutriscoreBadge";
+import Link from "next/link";
 import type { SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
 import styles from "./AddObject.module.css";
 
@@ -71,6 +75,8 @@ export default function AddObjectClient({
   const [searchMode, setSearchMode] = useState<"barcode" | "name">("barcode");
   // Fiche d'annuaire résolue (ID réel de object_directory) — c'est elle qu'on envoie à l'ajout
   const [objectDirectoryId, setObjectDirectoryId] = useState<string>("");
+  // R2 4:2 : l'item d'annuaire résolu (porteur de la variante éventuelle)
+  const [resolvedDirectoryItem, setResolvedDirectoryItem] = useState<SimplifiedDirectoryItem | null>(null);
   // Résultats de la recherche par nom (annuaire local, sinon OpenFoodFacts)
   const [nameResults, setNameResults] = useState<SimplifiedDirectoryItem[]>([]);
 
@@ -78,6 +84,7 @@ export default function AddObjectClient({
   // code-barres éventuel et surtout la fiche résolue (objectDirectoryId réel)
   const applyDirectoryItem = useCallback(
     (product: SimplifiedDirectoryItem) => {
+      setResolvedDirectoryItem(product);
       setObjectDirectoryId(product.id || "");
       setFormData((prev) => ({
         ...prev,
@@ -212,6 +219,31 @@ export default function AddObjectClient({
       }
 
       try {
+        // R2 4:2 (option B) : correction bonus au submit si la fiche résolue
+        // porte un code-barres — nom → générique, marque → variante ;
+        // échec jamais bloquant (décisions Alexis 11/10).
+        if (resolvedDirectoryItem?.barcode && resolvedDirectoryItem?.name) {
+          const plan = buildScanCorrectionPlan({
+            currentName: resolvedDirectoryItem.name,
+            submittedName: formData.name,
+            currentBrand: resolvedDirectoryItem.variant?.brand ?? resolvedDirectoryItem.brand ?? null,
+            submittedBrand: formData.brand ?? "",
+            hasVariant: Boolean(resolvedDirectoryItem.variant),
+          });
+          if (plan.nameChanged || plan.brandChanged) {
+            try {
+              await correctVariantFromScan(
+                resolvedDirectoryItem.barcode,
+                formData.name.trim(),
+                (formData.brand ?? "").trim()
+              );
+              console.log("[AddObjectClient] Fiche corrigée depuis l'ajout");
+            } catch (corrErr) {
+              console.error("[AddObjectClient] Correction échouée (bonus, l'ajout continue) :", corrErr);
+            }
+          }
+        }
+
         // Convertir les donnees du formulaire en FormData
         const formDataForAction = new FormData();
         formDataForAction.append('installationId', installationId);
@@ -326,6 +358,35 @@ export default function AddObjectClient({
           />
           {isSearching && <p className={styles.hint}>Recherche en cours...</p>}
         </div>
+        )}
+
+        {/* R2 4:2 (Q3) : variante identifiée sur la fiche résolue */}
+        {resolvedDirectoryItem?.variant && (
+          <div className={styles.variantInfo}>
+            {resolvedDirectoryItem.variant.imageUrl && (
+              <img
+                src={resolvedDirectoryItem.variant.imageUrl}
+                alt=""
+                className={styles.variantImage}
+                loading="lazy"
+              />
+            )}
+            <div className={styles.variantText}>
+              <span className={styles.variantLabel}>Variante identifiée par le code-barres</span>
+              {resolvedDirectoryItem.variant.brand && (
+                <span className={styles.variantBrand}>{resolvedDirectoryItem.variant.brand}</span>
+              )}
+              {resolvedDirectoryItem.variant.nutriscore && (
+                <NutriscoreBadge score={resolvedDirectoryItem.variant.nutriscore} size="small" />
+              )}
+            </div>
+            <Link
+              href={"/stock/" + resolvedDirectoryItem.id + "/variantes/" + resolvedDirectoryItem.variant.id}
+              className={styles.variantLink}
+            >
+              Voir la fiche variante
+            </Link>
+          </div>
         )}
 
         {/* Nom */}

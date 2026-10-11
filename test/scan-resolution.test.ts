@@ -3,6 +3,7 @@ import {
   buildOffCreationPlan,
   buildScanVariantSummary,
   applyVariantToDirectoryItem,
+  buildScanCorrectionPlan,
 } from "@/lib/services/ScanResolutionViewService";
 
 // ============================================
@@ -150,5 +151,76 @@ describe("applyVariantToDirectoryItem", () => {
     );
     expect(out.item.nutriscore).toBe("A");
     expect(out.item.brand).toBe("Barilla");
+  });
+});
+
+// ============================================
+// TDD — Chantier 4:2 R2 (11/10) : correction de nom/marque au scan.
+// Décisions Alexis 11/10 : le nom corrigé va sur le GÉNÉRIQUE (seul
+// porteur du nom), la marque corrigée sur la VARIANTE quand elle existe
+// (repli générique sinon — statu quo Q2 06/10) ; la correction PASSE le
+// verrou OFF (les fiches mal nommées par OpenFoodFacts sont la cible).
+// Partie pure — plan de correction calculé sans DB.
+// ============================================
+
+describe("buildScanCorrectionPlan", () => {
+  const base = {
+    currentName: "Cristaline Eau minérale",
+    submittedName: "Cristaline Eau minérale",
+    currentBrand: "Cristaline",
+    submittedBrand: "Cristaline",
+    hasVariant: true,
+  };
+
+  it("aucune modification : rien à corriger", () => {
+    const plan = buildScanCorrectionPlan(base);
+    expect(plan.nameChanged).toBe(false);
+    expect(plan.brandChanged).toBe(false);
+  });
+
+  it("nom modifié : nameChanged", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedName: "Cristaline eau source" });
+    expect(plan.nameChanged).toBe(true);
+    expect(plan.brandChanged).toBe(false);
+  });
+
+  it("nom identique après trim : pas de correction", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedName: "  Cristaline Eau minérale  " });
+    expect(plan.nameChanged).toBe(false);
+  });
+
+  it("nom soumis vide : jamais d'effacement", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedName: "   " });
+    expect(plan.nameChanged).toBe(false);
+  });
+
+  it("marque modifiée : brandChanged", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedBrand: "Carrefour" });
+    expect(plan.brandChanged).toBe(true);
+  });
+
+  it("marque identique insensible à la casse : pas de correction", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedBrand: "cristaline" });
+    expect(plan.brandChanged).toBe(false);
+  });
+
+  it("marque courante null, soumise remplie : correction", () => {
+    const plan = buildScanCorrectionPlan({ ...base, currentBrand: null, submittedBrand: "Cristaline" });
+    expect(plan.brandChanged).toBe(true);
+  });
+
+  it("marque soumise vide : jamais d'effacement", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedBrand: "" });
+    expect(plan.brandChanged).toBe(false);
+  });
+
+  it("avec variante : la marque corrigée vise la variante", () => {
+    const plan = buildScanCorrectionPlan({ ...base, submittedBrand: "Carrefour" });
+    expect(plan.brandTarget).toBe("variant");
+  });
+
+  it("sans variante : la marque corrigée vise le générique (statu quo)", () => {
+    const plan = buildScanCorrectionPlan({ ...base, hasVariant: false, submittedBrand: "Carrefour" });
+    expect(plan.brandTarget).toBe("generic");
   });
 });

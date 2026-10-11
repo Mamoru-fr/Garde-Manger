@@ -870,3 +870,61 @@
     padding: 0.625rem 1.25rem;
   }
 }
+
+/* ============================================
+   R2 4:2 — BLOC INFORMATIF VARIANTE (Q3 Alexis)
+   ============================================ */
+
+.variantInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fdf6e8;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+  /* Leçon 08/10 : jamais de fuite par largeur intrinsèque */
+  min-width: 0;
+}
+
+.variantImage {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: white;
+  flex-shrink: 0;
+}
+
+.variantText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.variantLabel {
+  font-size: 0.75rem;
+  color: #6b5b47;
+}
+
+.variantBrand {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2e1a10;
+  overflow-wrap: anywhere;
+}
+
+.variantLink {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b5e34;
+  text-decoration: underline;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
