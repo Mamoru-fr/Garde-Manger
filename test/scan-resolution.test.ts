@@ -4,6 +4,7 @@ import {
   buildScanVariantSummary,
   applyVariantToDirectoryItem,
   buildScanCorrectionPlan,
+  buildBarcodeLinkPlan,
 } from "@/lib/services/ScanResolutionViewService";
 
 // ============================================

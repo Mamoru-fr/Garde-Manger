@@ -14,6 +14,7 @@ import {
 import { eq, or, ilike } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { DirectoryProduct, SimplifiedDirectoryItem } from "@/lib/types/scanTypes";
+import { ErrorCodes, type ErrorCode } from "@/lib/types";
 
 // Configuration de l'API OpenFoodFacts
 const OPEN_FOOD_FACTS_API_URL = "https://api.openfoodfacts.org/api/v3";
@@ -503,7 +504,7 @@ export {
 export async function linkBarcodeToDirectoryService(
   barcode: string,
   directoryId: string
-): Promise<{ success: boolean; error?: string; code?: string; data?: { linked: boolean } }> {
+): Promise<{ success: boolean; error?: string; code?: ErrorCode; data?: { linked: boolean } }> {
   const cleanedBarcode = cleanBarcode(barcode);
   const targetDirectoryId = directoryId.trim();
 
@@ -511,7 +512,7 @@ export async function linkBarcodeToDirectoryService(
     return {
       success: false,
       error: "Code-barres invalide",
-      code: "INVALID_BARCODE",
+      code: ErrorCodes.INVALID_BARCODE,
     };
   }
 
@@ -519,7 +520,7 @@ export async function linkBarcodeToDirectoryService(
     return {
       success: false,
       error: "Fiche cible invalide",
-      code: "VALIDATION_ERROR",
+      code: ErrorCodes.VALIDATION_ERROR,
     };
   }
 
@@ -547,7 +548,7 @@ export async function linkBarcodeToDirectoryService(
       return {
         success: false,
         error: "Fiche cible invalide",
-        code: "VALIDATION_ERROR",
+        code: ErrorCodes.VALIDATION_ERROR,
       };
     }
 
@@ -555,7 +556,7 @@ export async function linkBarcodeToDirectoryService(
       return {
         success: false,
         error: "Ce code-barres est déjà lié à une autre fiche. Utilisez la fusion de fiches si vous voulez le déplacer.",
-        code: "CONFLICT",
+        code: ErrorCodes.CONFLICT,
       };
     }
 
@@ -572,7 +573,7 @@ export async function linkBarcodeToDirectoryService(
         return {
           success: false,
           error: "Fiche introuvable dans l'annuaire",
-          code: "NOT_FOUND",
+          code: ErrorCodes.NOT_FOUND,
         };
       }
 
@@ -599,7 +600,7 @@ export async function linkBarcodeToDirectoryService(
     return {
       success: false,
       error: "Erreur lors de la liaison du code-barres",
-      code: "INTERNAL_ERROR",
+      code: ErrorCodes.INTERNAL_ERROR,
     };
   }
 }
