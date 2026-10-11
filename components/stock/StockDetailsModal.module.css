@@ -883,3 +883,118 @@
     transform: rotate(360deg);
   }
 }
+
+/* ============================================
+   FIX 11/10 — ACTIONS DE GESTION EN SURCOUCHE
+   (décision Alexis : boutons + modals sur modals,
+   le corps de la modale redevient lisible)
+   ============================================ */
+
+.stockActionsBar {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8dfd0;
+  background: #fdf6e8;
+  border-radius: 0 0 12px 12px;
+}
+
+.stockActionButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  background: white;
+  color: #2e1a10;
+  border: 1px solid #e8dfd0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  /* Leçon 08/10 : jamais de fuite par largeur intrinsèque */
+  min-width: 0;
+}
+
+.stockActionButton:hover:not(:disabled) {
+  background: #f5ead6;
+}
+
+.stockActionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Surcouche au-dessus de l'overlay principal (z-index 1000) */
+.subModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(46, 26, 16, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 1rem;
+  animation: subModalFadeIn 0.2s ease-out;
+}
+
+@keyframes subModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.subModal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(46, 26, 16, 0.35);
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+  animation: modalSlideIn 0.25s ease-out;
+  /* Leçon 08/10 : le flex item ne doit jamais dépasser son conteneur */
+  min-width: 0;
+}
+
+.subModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  min-width: 0;
+}
+
+.subModalHeader .sectionTitle,
+.subModalHeader .moveTitle {
+  margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.subModalHeader .closeButton {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  /* Surcouche mobile : bottom sheet, comme les modals principales */
+  .subModalOverlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .subModal {
+    border-radius: 16px 16px 0 0;
+    max-width: 100%;
+    max-height: 85vh;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    animation: sheetSlideUp 0.3s ease-out;
+  }
+}

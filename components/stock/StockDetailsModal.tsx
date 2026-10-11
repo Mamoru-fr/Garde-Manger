@@ -74,6 +74,8 @@ export default function StockDetailsModal({
   });
   const [quantityAdjustment, setQuantityAdjustment] = useState(0);
   const [quantityInput, setQuantityInput] = useState(1);
+  // Panneau de gestion ouvert en surcouche (décision Alexis 11/10)
+  const [activePanel, setActivePanel] = useState<"quantity" | "move" | null>(null);
 
   // Vérifier si on peut éditer
   const canEdit = item.hasEditPermission && !item.isReadOnly;
@@ -626,17 +628,43 @@ export default function StockDetailsModal({
           </div>
         )}
 
-        {/* Section de gestion du stock */}
+        {/* Actions de gestion du stock (décision Alexis 11/10) : les sections
+            figées écrasaient la lecture des infos — deux boutons les ouvrent
+            en surcouche, le corps de la modale redevient lisible */}
         {canManageStock && !isEditing && (
-          <div className={styles.stockManagementSection}>
-            <h3 className={styles.sectionTitle}>
-              <Package size={16} /> Gestion du stock
-            </h3>
+          <div className={styles.stockActionsBar}>
+            <button
+              onClick={() => setActivePanel("quantity")}
+              className={styles.stockActionButton}
+            >
+              <Package size={18} /> Gestion du stock
+            </button>
+            {onMove && (
+              <button
+                onClick={() => setActivePanel("move")}
+                className={styles.stockActionButton}
+                disabled={installations.filter(inst => inst.id !== item.installationId).length === 0}
+              >
+                <ArrowRightLeft size={18} /> Déplacer
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Panneau « ajuster la quantité » (surcouche) */}
+        {activePanel === "quantity" && (
+          <div className={styles.subModalOverlay} onClick={() => { if (!isAdjustingQuantity) setActivePanel(null); }}>
+            <div className={styles.subModal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Ajuster la quantité">
+              <div className={styles.subModalHeader}>
+                <h3 className={styles.sectionTitle}><Package size={16} /> Ajuster la quantité</h3>
+                <button onClick={() => setActivePanel(null)} className={styles.closeButton} aria-label="Fermer">
+                  <X size={18} />
+                </button>
+              </div>
 
             {/* Ajustement de quantité */}
             <div className={styles.quantityAdjustment}>
               <span className={styles.quantityLabel}>Quantité actuelle: {localQuantity}</span>
-              <span className={styles.adjustTitle}>Ajuster la quantité</span>
               
               {/* Contrôles pour choisir la quantité à ajouter/retirer */}
               <div className={styles.quantityControls}>
@@ -691,12 +719,21 @@ export default function StockDetailsModal({
               </div>
             </div>
 
-            {/* Déplacement vers une autre installation */}
-            {onMove && (
+            </div>
+          </div>
+        )}
+
+        {/* Panneau « déplacer » (surcouche) */}
+        {activePanel === "move" && onMove && (
+          <div className={styles.subModalOverlay} onClick={() => { if (!isMoving) setActivePanel(null); }}>
+            <div className={styles.subModal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Déplacer vers une autre installation">
+              <div className={styles.subModalHeader}>
+                <h3 className={styles.moveTitle}><ArrowRightLeft size={16} /> Déplacer vers une autre installation</h3>
+                <button onClick={() => setActivePanel(null)} className={styles.closeButton} aria-label="Fermer">
+                  <X size={18} />
+                </button>
+              </div>
               <div className={styles.moveSection}>
-                <h4 className={styles.moveTitle}>
-                  <ArrowRightLeft size={16} /> Déplacer vers une autre installation
-                </h4>
                 <div className={styles.moveControls}>
                   <select
                     value={moveData.selectedInstallationId}
@@ -739,7 +776,7 @@ export default function StockDetailsModal({
                   Déplacez {moveData.quantityToMove} unité(s) vers l'installation sélectionnée
                 </p>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
