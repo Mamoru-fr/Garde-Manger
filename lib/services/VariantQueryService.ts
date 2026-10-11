@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/drizzle";
 import { buildScanCorrectionPlan } from "@/lib/services/ScanResolutionViewService";
-import { objectDirectory, productVariants } from "@/lib/db/schema";
+import { barcodeDirectory, objectDirectory, productVariants } from "@/lib/db/schema";
 
 import {
   buildVariantDetails,
