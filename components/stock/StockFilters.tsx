@@ -2,8 +2,11 @@
 
 // ============================================
 // StockFilters — les filtres de la vue générique
-// (bloc 3) : la recherche porte sur le NOM du
-// générique (§2.1), le tri par quantité exige une
+// (bloc 3, étendus le 11/10) : la recherche porte sur le
+// nom du générique, la marque de la variante et le
+// code-barres (décision Alexis) ; elle est TOUJOURS
+// visible en haut de page (plus de dépliage préalable).
+// Le tri par quantité exige une
 // famille d'unités (Q4 : les cartes des autres
 // familles sont masquées, tri sur la valeur en base).
 // ============================================
@@ -100,6 +103,31 @@ export default function StockFilters({
 
   return (
     <div className={styles.filtersContainer}>
+      {/* Recherche toujours visible (décision Alexis 11/10) : retrouver un
+          produit = un geste. Débounce 300ms dans l'effet du haut. */}
+      <div className={styles.searchBar}>
+        <div className={styles.inputWrapper}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            placeholder="Rechercher un produit, une marque, un code-barres..."
+            value={filters.searchQuery || ''}
+            onChange={handleSearchChange}
+            className={styles.searchInput}
+          />
+          {filters.searchQuery && (
+            <button
+              type="button"
+              onClick={() => setFilters(prev => ({ ...prev, searchQuery: '' }))}
+              className={styles.searchClear}
+              aria-label="Effacer la recherche"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className={styles.filtersHeader}>
         <button 
           type="button" 
@@ -131,24 +159,6 @@ export default function StockFilters({
 
       {isExpanded && (
         <div className={styles.filtersContent}>
-          {/* Recherche */}
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>
-              <Search size={16} />
-              Recherche
-            </label>
-            <div className={styles.inputWrapper}>
-              <Search size={16} className={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Nom du produit..."
-                value={filters.searchQuery || ''}
-                onChange={handleSearchChange}
-                className={styles.searchInput}
-              />
-            </div>
-          </div>
-
           {/* Filtres en grille */}
           <div className={styles.filtersGrid}>
             {/* Installation (uniquement pour la vue globale) */}

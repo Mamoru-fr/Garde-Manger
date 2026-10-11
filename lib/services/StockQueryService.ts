@@ -17,13 +17,15 @@
 //   valeur en base de la famille.
 // ============================================
 
-import { and, eq, gte, inArray, isNull, like, lte } from "drizzle-orm";
+import { and, eq, gte, ilike, inArray, isNull, lte, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/drizzle";
 import {
+  barcodeDirectory,
   installations,
   objectDirectory,
   objectInstallation,
+  productVariants,
   units as unitsTable,
   userDisplayPreferences,
   userInstallations,
@@ -285,8 +287,17 @@ export async function getGenericStockView(
     ...(filters.directoryId
       ? [eq(objectDirectory.id, filters.directoryId)]
       : []),
+    // Fix 11/10 : recherche textuelle élargie (décision Alexis) — nom du
+    // générique, marque de la variante, ou code-barres ; insensible à la
+    // casse (ilike — « cristaline » trouvait « Cristaline » avec like).
     ...(filters.searchQuery
-      ? [like(objectDirectory.name, `%${filters.searchQuery}%`)]
+      ? [
+          or(
+            ilike(objectDirectory.name, `%${filters.searchQuery}%`),
+            ilike(productVariants.brand, `%${filters.searchQuery}%`),
+            ilike(barcodeDirectory.barcode, `%${filters.searchQuery}%`)
+          ),
+        ]
       : []),
     ...(filters.category
       ? [eq(objectDirectory.categoryId, filters.category)]
@@ -348,6 +359,17 @@ export async function getGenericStockView(
       .leftJoin(
         objectDirectory,
         eq(objectInstallation.objectDirectoryId, objectDirectory.id)
+      )
+      // Fix 11/10 : la recherche porte aussi sur la marque de la variante
+      // et le code-barres — jointures pour le or() de directoryFilters.
+      // selectDistinct déduplique les lignes multi-variantes/multi-codes.
+      .leftJoin(
+        productVariants,
+        eq(productVariants.genericDirectoryId, objectDirectory.id)
+      )
+      .leftJoin(
+        barcodeDirectory,
+        eq(barcodeDirectory.objectDirectoryId, objectDirectory.id)
       )
       .where(directoryFilters);
 

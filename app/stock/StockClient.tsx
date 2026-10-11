@@ -13,7 +13,7 @@
 // et la suppression vivent au niveau 3.
 // ============================================
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Warehouse, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import type { GenericStockCard } from "@/lib/services/StockViewService";
@@ -161,6 +161,20 @@ export default function StockClient({
   const handleRefresh = useCallback(() => {
     loadStock();
   }, [loadStock]);
+
+  // Fix 11/10 (recherche bout en bout) : les filtres déclenchent enfin le
+  // rechargement — loadStock n'était appelé que par « Réessayer », la
+  // recherche et les catégories étaient mortes à l'écran. Le premier rendu
+  // ne recharge PAS : initialData (rendu serveur) porte déjà la vue des
+  // filtres par défaut ; sans initialData on charge au montage.
+  const skipFirstLoadRef = useRef(true);
+  useEffect(() => {
+    if (skipFirstLoadRef.current) {
+      skipFirstLoadRef.current = false;
+      if (initialData) return;
+    }
+    loadStock();
+  }, [loadStock, initialData]);
 
   // Le clic sur une carte navigue vers sa fiche générique :
   // niveaux 2-3 de la pyramide (routes posées au round 3,
