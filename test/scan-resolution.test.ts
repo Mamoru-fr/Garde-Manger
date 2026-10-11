@@ -224,3 +224,66 @@ describe("buildScanCorrectionPlan", () => {
     expect(plan.brandTarget).toBe("generic");
   });
 });
+
+// ============================================
+// Liaison code-barres → fiche existante (round 3 du 4:2 — 11/10) :
+// scanner un code inconnu et dire « c'est ce produit-là ». Le plan pur
+// décide entre liaison, no-op (déjà liée) et conflit (liée ailleurs).
+// ============================================
+describe("buildBarcodeLinkPlan — liaison code-barres → fiche existante", () => {
+  it("aucune ligne existante : liaison à écrire", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: null,
+      existingVariantId: null,
+      targetDirectoryId: "dir-1",
+    });
+    expect(plan.action).toBe("link");
+  });
+
+  it("déjà liée à la même fiche (sans variante) : no-op idempotent", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: "dir-1",
+      existingVariantId: null,
+      targetDirectoryId: "dir-1",
+    });
+    expect(plan.action).toBe("noop");
+  });
+
+  it("déjà liée à la même fiche (avec variante) : no-op — la variante prime, jamais écrasée", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: "dir-1",
+      existingVariantId: "var-1",
+      targetDirectoryId: "dir-1",
+    });
+    expect(plan.action).toBe("noop");
+  });
+
+  it("liée à une AUTRE fiche : conflit — refus explicite, jamais de re-pointage silencieux", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: "dir-1",
+      existingVariantId: null,
+      targetDirectoryId: "dir-2",
+    });
+    expect(plan.action).toBe("conflict");
+    expect(plan.currentDirectoryId).toBe("dir-1");
+  });
+
+  it("cible vide ou blanche : invalide, rien à écrire", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: null,
+      existingVariantId: null,
+      targetDirectoryId: "   ",
+    });
+    expect(plan.action).toBe("invalid");
+  });
+
+  it("cible identique après trim : liaison normale (l'espace ne masque pas un doublon)", () => {
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: null,
+      existingVariantId: null,
+      targetDirectoryId: "  dir-1  ",
+    });
+    expect(plan.action).toBe("link");
+    expect(plan.targetDirectoryId).toBe("dir-1");
+  });
+});

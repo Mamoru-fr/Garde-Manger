@@ -5,6 +5,7 @@
 import { db } from "@/lib/db/drizzle";
 import { objectDirectory, barcodeDirectory, productVariants } from "@/lib/db/schema";
 import {
+  buildBarcodeLinkPlan,
   buildOffCreationPlan,
   buildScanVariantSummary,
   applyVariantToDirectoryItem,
@@ -480,3 +481,125 @@ export {
   CACHE_TTL,
   scanCache,
 };
+
+// ============================================
+// Liaison code-barres → fiche existante (round 3 du 4:2 — 11/10).
+// Scanner un code inconnu et dire « c'est ce produit-là » : la fiche
+// existante reçoit le code-barres, l'objet du submit ira chez elle via
+// la chaîne existante (addScannedObject retrouve la ligne liée).
+// ============================================
+
+/**
+ * Lie un code-barres à une fiche existante de l'annuaire. Idempotent :
+ * déjà liée à cette fiche → succès sans écriture. Conflit (liée à une
+ * autre fiche) → refus explicite, jamais de re-pointage silencieux
+ * (le geste de fusion existe déjà : R4/R5 du bloc 4).
+ * Piège gravé : le résultat NÉGATIF du scan est caché (scanCache) —
+ * sans invalidation, le submit re-créerait une fiche malgré la liaison.
+ * La liaison écrit productVariantId NULL : on sait que le code identifie
+ * la fiche, pas la variante (le rattrapage 4:2 self-healing complètera
+ * si OpenFoodFacts connaît le code).
+ */
+export async function linkBarcodeToDirectoryService(
+  barcode: string,
+  directoryId: string
+): Promise<{ success: boolean; error?: string; code?: string; data?: { linked: boolean } }> {
+  const cleanedBarcode = cleanBarcode(barcode);
+  const targetDirectoryId = directoryId.trim();
+
+  if (!cleanedBarcode || !isValidBarcode(cleanedBarcode)) {
+    return {
+      success: false,
+      error: "Code-barres invalide",
+      code: "INVALID_BARCODE",
+    };
+  }
+
+  if (targetDirectoryId === "") {
+    return {
+      success: false,
+      error: "Fiche cible invalide",
+      code: "VALIDATION_ERROR",
+    };
+  }
+
+  try {
+    // 1. État actuel du code-barres dans l'annuaire.
+    const existingRows = await db
+      .select({
+        objectDirectoryId: barcodeDirectory.objectDirectoryId,
+        productVariantId: barcodeDirectory.productVariantId,
+      })
+      .from(barcodeDirectory)
+      .where(eq(barcodeDirectory.barcode, cleanedBarcode))
+      .limit(1);
+
+    const existing = existingRows[0] ?? null;
+
+    // 2. Le plan pur tranche (testé — TDD 6 cas).
+    const plan = buildBarcodeLinkPlan({
+      existingDirectoryId: existing?.objectDirectoryId ?? null,
+      existingVariantId: existing?.productVariantId ?? null,
+      targetDirectoryId,
+    });
+
+    if (plan.action === "invalid") {
+      return {
+        success: false,
+        error: "Fiche cible invalide",
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    if (plan.action === "conflict") {
+      return {
+        success: false,
+        error: "Ce code-barres est déjà lié à une autre fiche. Utilisez la fusion de fiches si vous voulez le déplacer.",
+        code: "CONFLICT",
+      };
+    }
+
+    if (plan.action === "link") {
+      // 3. La fiche cible doit exister (id venant de l'UI — ne jamais
+      // écrire une FK vers une fiche fantôme).
+      const targetRows = await db
+        .select({ id: objectDirectory.id })
+        .from(objectDirectory)
+        .where(eq(objectDirectory.id, targetDirectoryId))
+        .limit(1);
+
+      if (!targetRows.length) {
+        return {
+          success: false,
+          error: "Fiche introuvable dans l'annuaire",
+          code: "NOT_FOUND",
+        };
+      }
+
+      await db.insert(barcodeDirectory).values({
+        id: randomUUID(),
+        barcode: cleanedBarcode,
+        objectDirectoryId: targetDirectoryId,
+        productVariantId: null, // le code identifie la fiche, pas la variante
+      });
+    }
+
+    // 4. Invalider le cache du scan (le négatif caché ment désormais —
+    // la liaison vient de changer la vérité). Idempotent : noop aussi,
+    // le cache peut contenir un négatif périmé même si la liaison
+    // existait déjà.
+    scanCache.delete(cleanedBarcode);
+
+    return {
+      success: true,
+      data: { linked: plan.action === "link" },
+    };
+  } catch (error) {
+    console.error("[DirectoryService] Erreur linkBarcodeToDirectory:", error);
+    return {
+      success: false,
+      error: "Erreur lors de la liaison du code-barres",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}

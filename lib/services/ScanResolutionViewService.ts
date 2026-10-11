@@ -171,3 +171,55 @@ export function buildScanCorrectionPlan(input: {
   };
 }
 
+
+// ============================================
+// Liaison code-barres → fiche existante (round 3 du 4:2 — 11/10) :
+// scanner un code inconnu et dire « c'est ce produit-là ». Le plan pur
+// tranche AVANT toute écriture ; la brique data (DirectoryService)
+// l'exécute et invalide le scanCache (le résultat négatif du scan est
+// caché — sans invalidation, le submit re-créerait une fiche).
+// ============================================
+
+/**
+ * Décision de liaison d'un code-barres vers une fiche existante.
+ * - link : aucune ligne en base → insérer { barcode, objectDirectoryId }
+ * - noop : déjà liée à la même fiche → succès idempotent, rien à écrire
+ *   (la variante éventuelle prime, jamais écrasée — elle identifie le
+ *   produit de marque plus précisément que la fiche générique)
+ * - conflict : liée à une AUTRE fiche → refus explicite, jamais de
+ *   re-pointage silencieux (le geste de fusion existe déjà : R4/R5)
+ * - invalid : cible vide/blanche → rien à faire
+ */
+export interface BarcodeLinkPlan {
+  action: "link" | "noop" | "conflict" | "invalid";
+  targetDirectoryId: string | null; // trimmé, null si invalide
+  currentDirectoryId: string | null; // renseigné en conflit, pour le message
+}
+
+export function buildBarcodeLinkPlan(input: {
+  existingDirectoryId: string | null;
+  existingVariantId: string | null;
+  targetDirectoryId: string;
+}): BarcodeLinkPlan {
+  const target = input.targetDirectoryId.trim();
+
+  if (target === "") {
+    return { action: "invalid", targetDirectoryId: null, currentDirectoryId: null };
+  }
+
+  if (input.existingDirectoryId === null) {
+    return { action: "link", targetDirectoryId: target, currentDirectoryId: null };
+  }
+
+  if (input.existingDirectoryId === target) {
+    // Déjà liée à cette fiche : idempotent. La variante éventuelle
+    // (existingVariantId) est conservée telle quelle.
+    return { action: "noop", targetDirectoryId: target, currentDirectoryId: target };
+  }
+
+  return {
+    action: "conflict",
+    targetDirectoryId: target,
+    currentDirectoryId: input.existingDirectoryId,
+  };
+}
